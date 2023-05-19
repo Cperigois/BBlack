@@ -1,12 +1,8 @@
-import math
 import os
 import numpy as np
 import pandas as pd
 from astropy.cosmology import Planck15
-import parameters as param
-from Stochastic import Basic_Functions as BF
-from Starter.Htild import GWk_noEcc_Pycbcwf
-from scipy.interpolate import InterpolatedUnivariateSpline
+import Parameters as params
 
 class AstroModel:
 
