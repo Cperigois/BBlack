@@ -1,12 +1,20 @@
 import os
-import numpy as np
-import pandas as pd
-from astropy.cosmology import Planck15
 import Parameters as params
-
+import AstroModel.utility_functions as UF
+import os.path
+import pandas as pd
+import numpy as np
+from astropy.cosmology import Planck15
+import astropy.units as u
+import random
+import concurrent.futures
+import emcee
+import scipy.stats
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 class AstroModel:
 
-    def __init__(self, name_model = None, observables = ['Mc','q','z'], Cosmology = Planck15, Spins = 'InCat', duration = 1, catsize = None):
+    def __init__(self, name_model , path,  observables = ['Mc','q','z'], Spins = 'InCat', duration = 1, catsize = None):
         """Create an instance of your model.
          Parameters
          ----------
@@ -30,20 +38,22 @@ class AstroModel:
 
         # Set class variables
         self.name_model = name_model
-        self.obervables = observables
+        self.observables = observables
         self.cosmo = Cosmology
         if catsize == None :
             self.catsize = self.sources_in_tobs_time(duration)
         else :
             self.catsize = catsize
         self.spin_option = Spins
-        self.loaded_flag = {}
+        self.path = path
+        # Flags for loading data
+        self.loaded_flag = {"cat": False, "mrd": False}
 
     def prepare_model(self):
-        if os.path.exists('/Data') == False:
+        if os.path.exists('Data/') == False:
             os.mkdir('Data')
-        if os.path.exists('/Data/name_model') == False:
-            os.mkdir('Data/name_model')
+        if os.path.exists('Data/'+self.name_model) == False:
+            os.mkdir('Data/'+self.name_model)
 
 
     def read_merger_rate_file(self, delimiter="\t"):
@@ -89,13 +99,13 @@ class AstroModel:
             Delimiter used to separate columns in merger rate file (default = "\t")
         """
 
-        if not os.path.isfile(input_file):
+        if not os.path.isfile(self.path+input_file):
             raise FileNotFoundError("\nThe source file for the merger rate density of CosmoRate could not be found.\n"
                                     "Check that the file is in {} and that there is only one file containing the "
-                                    "string 'MRD'".format(dir_cosmorate))
+                                    "string 'MRD'".format(self.path))
 
         # Read file
-        data_original = np.loadtxt(input_file, skiprows=1)
+        data_original = np.loadtxt(self.path+input_file, skiprows=1)
 
         # Check that range_z is a multiple of deltaz of cosmoRate
         redshift = data_original[:, 0]
@@ -111,7 +121,7 @@ class AstroModel:
                            for z in redshift])
         mr_detector_frame = np.array([dvc * mr_df for dvc, mr_df in zip(dvc_dz, mrd_detector_frame)])
 
-        output_name = 'Data/'+name_model+'/Mrd.dat'
+        output_name = 'Data/'+self.name_model+'/Mrd.dat'
         self.file_mrd = output_name
         # Create and write file.
         with open(output_name, "w") as fileout:
@@ -163,8 +173,7 @@ class AstroModel:
         #self.dir_cat = path
         self.data_cat = data_cat
 
-    def create_catalog_file(self, dir_cosmorate, frac_hier=None, overwrite=False,
-                            delimiter="\t", input_catname_beg = 'all_vcm_',input_catname_end ='_50.dat'):
+    def create_catalog_file(self, delimiter="\t", input_catname_beg = 'all_vcm_',input_catname_end ='_50.dat'):
         """Create the catalog file using the information from CosmoRate and previously created merger rate
         density file.
         In current version, CosmoRate files have the name "identifier_file + "_" + str(i) + "_50.dat" where i
@@ -209,13 +218,18 @@ class AstroModel:
         # the redshift bin
         mr_df = self.data_mrd['mr_df']
         cdf = np.append(0.0, np.cumsum(mr_df/mr_df.sum()))
+
         counts, bin_edges = np.histogram(np.random.rand(self.catsize), bins=cdf)
 
         # Initiate dataframe that will contains catalog values
-        df_final = pd.DataFrame(columns=self.self.obervables)
+        df_final = pd.DataFrame(columns=self.observables)
 
         # Get the names of catalog files from CosmoRate
-        dir_catfile = dir_cosmorate + "/catalogs/"
+        dir_catfile = self.path + "catalogs/"
+        n = os.system("ls " + dir_catfile + " | wc - l")
+        print(n)
+        print(counts)
+        print(len(counts))
 
         print("*******  START : CATALOG CREATION  *******")
 
@@ -226,16 +240,15 @@ class AstroModel:
             # If CosmoRate changes, updates this part too.
 
             cat_source_name = dir_catfile + input_catname_beg + str(i + 1) + input_catname_end
-            names = np.intersect1d(df.names(), np.array(params.keys()))
             df = pd.read_csv(cat_source_name, delimiter="\t" )
             df.rename(columns=params.input_parameters, inplace=True)
 
             # Map to Mc, q if they are selected as parameters
             if "Mc" in self.observables or "q" in self.observables:
-                df["Mc"], df["q"] = m1_m2_to_mc_q(df["m1"], df["m2"])
+                df["Mc"], df["q"] = UF.m1_m2_to_mc_q(df["m1"], df["m2"])
 
             if "m1" in self.observables or "m2" in self.observables:
-                df["m1"], df["m2"] = mc_q_to_m1_m2(df["Mc"], df["q"])
+                df["m1"], df["m2"] = UF.mc_q_to_m1_m2(df["Mc"], df["q"])
 
             if "Mt" in self.observables and "Mt" not in df.columns :
                 df["Mt"] = df["m1"]+df["m2"]
@@ -528,7 +541,7 @@ class AstroModel:
             costheta1 = np.ones(self.catsize)
             costheta2 = np.ones(self.catsize)
 
-        elif self.spin_option == 'Rand_ Dynamics' :
+        elif self.spin_option == 'Rand_Dynamics' :
             sigmaSpin = 0.1
             v1_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
             v2_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
@@ -549,7 +562,7 @@ class AstroModel:
             costheta1 = np.zeros(self.catsize)
             costheta2 = np.zeros(self.catsize)
         else :
-            print('Choose a spin model (Rand_Isotropic or Rand_Dynamics) or specify INCat if your catalogue already contain the spins.')
+            print('Choose a spin model (Rand_Isotropic or Rand_Dynamics) or specify InCat if your catalogue already contain the spins.')
         return V1, costheta1, V2, costheta2
 
     def comp_chieff(m1, m2, chi1, chi2, cos_theta_1, cos_theta_2):
