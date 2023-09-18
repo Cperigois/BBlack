@@ -1,26 +1,25 @@
-from astro_model import AstroModel as AM
 import advanced_params as AP
+import sys
+sys.path.append('../')
+import astrotools.AstroModel as AM
+
 
 
 """----------------------TO FILL----------------------"""
 
 """             *** GENERIC PARAMETERS ***            """
 
-nameOfProjectFolder = 'Example'
+name_of_project_folder = 'Example' # Careful, the name there HAS TO BE the SAME as the name of the folder
 redshiftRange = 15
 catalogSize = 200 # Minimum suggested 3000, 200 used for the example
 observables = ['Mc', 'q', 'z'] # Choose among ['Mc', 'q', 'z', 'chip', 'chieff']
 
-pAstroLimit = 0.9 # use only GW events with a pastro > pAstroLimit
-farLimit = 0.25 # use only GW events with a far < farLimit
-snrLimit = 0 # use only GW events with a snr > snrLimit
-
-fromCosmorate = True
+fromCosmorate = True # If your files are standerd output from cosmorate this parameter should be True, else, should be False
 
 
 """               *** ASTROMODELS ***                 """
 
-Example1 = AM.AstroModel(name = "Example1", path2Catalogs = "./Data/BBHs_m01/", path2Mrd = './Data/BBHs_m01/MRD.dat')# Optional: spinModel among 'InCat', 'Rand_Isotropic', 'Rand_Dynamics', 'Zeros' (default is 'InCat', assuming that your spins are in your initial catalog.
+Example1 = AM.AstroModel(name = "Example1", path2Catalogs = "./Data/BBHs_m01/",spinmodel path2Mrd = './Data/BBHs_m01/MRD.dat')# Optional: spinModel among 'InCat', 'Rand_Isotropic', 'Rand_Dynamics', 'Zeros' (default is 'InCat', assuming that your spins are in your initial catalog.
 
 Example2 = AM.AstroModel(name = "Example2", path2Catalogs = "./Data/BBHs_m02/", path2Mrd = './Data/BBHs_m02/MRD.dat')
 

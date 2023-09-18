@@ -1,6 +1,6 @@
 import os
 import Parameters as params
-import AstroModel.utility_functions as UF
+import astrotools.utility_functions as UF
 import os.path
 import pandas as pd
 import numpy as np
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 class AstroModel:
 
-    def __init__(self, name_model , path,  observables = ['Mc','q','z'], Spins = 'InCat', duration = 1, catsize = None):
+    def __init__(self, name , path,  observables = ['Mc','q','z'], Spins = 'InCat', duration = 1, catsize = None):
         """Create an instance of your model.
          Parameters
          ----------
@@ -37,9 +37,8 @@ class AstroModel:
          """
 
         # Set class variables
-        self.name_model = name_model
+        self.name = name
         self.observables = observables
-        self.cosmo = Cosmology
         if catsize == None :
             self.catsize = self.sources_in_tobs_time(duration)
         else :

@@ -3,7 +3,7 @@ import pandas
 def set(_projectFolder, _paramDictionnary, _advParamDictionnary):
     output = merge(_paramDictionnary, _advParamDictionnary)
     print("Started writing dictionary to the file ", _projectFolder,'Param.json')
-    with open(_projectFolder+'Param.json', "w") as file:
+    with open(_projectFolder+'/Param.json', "w") as file:
         json.dump(output, file)  # encode dict into JSON
     print("Done writing dict into Params.json file")
 
@@ -75,10 +75,34 @@ bayesModelProcessingBandWidthKDE = 0.075  # KDE bandwidth to use
 bayesOptionComputeLikelihood = "All"
 bayesOptionMultiChannel = "NoRate"
 
+
+"""             *** Event Selection ***           """
+
+"""
+These parameters are used to select the confident events from LVK.
+The standard population paper uses pastro>0.9, FAR<0.25 and no constrain on the SNR (i.e. SNR>0)
+"""
+
+
+pAstroLimit = 0.9 # use only GW events with a pastro > pAstroLimit
+farLimit = 0.25 # use only GW events with a far < farLimit
+snrLimit = 0 # use only GW events with a snr > snrLimit
+
+"""             *** Parameter output ***           """
+
+"""
+All parameters in this file has to end in the dictionnary, for the creation of the json file.
+"""
+
 advParams = {'input_parameters': input_parameters,
              'samplingNumberWalkers': samplingNumberWalkers,
              'samplingNumberChain': samplingNumberChain,
              'samplingBandwidthKDE': samplingBandwidthKDE,
              'bayesModelProcessingWaveformApproximant': bayesModelProcessingWaveformApproximant,
              'bayesModelProcessingBandWidthKDE': bayesModelProcessingBandWidthKDE,
-             'spin_model':spin_model}
+             'bayesOptionComputeLikelihood':bayesOptionComputeLikelihood,
+             'bayesOptionMultiChannel':bayesOptionMultiChannel,
+             'spin_model':spin_model,
+             'pAstroLimit':pAstroLimit,
+             'farLimit':farLimit,
+             'snrLimit':snrLimit}

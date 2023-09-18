@@ -1,7 +1,7 @@
 import os
 import re
 import json
-from Project_Modules.utility_functions import clean_path
+from astrotools.utility_functions import clean_path
 import Parameters as param
 
 #----------------------------------------------------------------------------------
