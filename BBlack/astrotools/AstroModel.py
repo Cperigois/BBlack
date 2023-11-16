@@ -1,6 +1,6 @@
 import os
-import Parameters as params
-import astrotools.utility_functions as UF
+import BBlack.Example.Parameters as P
+import BBlack.astrotools.utility_functions as UF
 import os.path
 import pandas as pd
 import numpy as np
@@ -10,11 +10,16 @@ import random
 import concurrent.futures
 import emcee
 import scipy.stats
+import json
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 class AstroModel:
 
-    def __init__(self, name , path,  observables = ['Mc','q','z'], Spins = 'InCat', duration = 1, catsize = None):
+    file = '../Params.json'
+    with open(file, 'r') as f:
+        P = json.load(f)
+
+    def __init__(self, name, path_to_catalogs, path_to_MRD,  observables = ['Mc','q','z'], spins='InCat', duration=1, catsize=None):
         """Create an instance of your model.
          Parameters
          ----------
@@ -38,15 +43,47 @@ class AstroModel:
 
         # Set class variables
         self.name = name
+        # Flags for loading data
+        self.loaded_flag = {"cat": False, "mrd": False}
         self.observables = observables
+        self.spin_option = spins
+        self.file_mrd = path_to_MRD
+
+    def process_astro_model(self):
+        # ---------------------------------------------      Main code       ---------------------------------------------------
+
+        # Make sure directories are created
+        if not os.path.exists(P['name_of_project_folder']):
+            os.mkdir(P['name_of_project_folder'])
+        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/"):
+            os.mkdir("Astro_Models/")
+        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/Catalogs/"):
+            os.mkdir("Astro_Models/Catalogs")
+        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
+            os.mkdir("Astro_Models/MergerRateDensity")
+
+        self.prepare_model()
+
+        # Create the merger rate file
+        self.create_merger_rate_file(range_z=P['redshift_range'], delimiter="\t")
+        self.create_catalog_file(delimiter="\t", input_catname_beg='BBHs_spin2020_', input_catname_end='_50.dat')
+        # Get all the parameters set in astro_model_param.py
+        #dir_cosmo_rate, astro_param, co_param, mag_gen_param, name_spin_model = return_astro_param(sys.argv)
+
+        # CosmoRate processing
+        process_cosmorate(path_dir_cr=dir_cosmo_rate, num_var_header=num_header_cosmorate, del_cosrate=del_cosrate)
+
+        # Create the merger rate file
+        model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
+
+        # Create the catalog
+        model_astro.create_catalog_file(dir_cosmorate=dir_cosmo_rate, num_cat=num_cat)
         if catsize == None :
             self.catsize = self.sources_in_tobs_time(duration)
         else :
             self.catsize = catsize
-        self.spin_option = Spins
-        self.path = path
-        # Flags for loading data
-        self.loaded_flag = {"cat": False, "mrd": False}
+
+
 
     def prepare_model(self):
         if os.path.exists('Data/') == False:
@@ -55,7 +92,7 @@ class AstroModel:
             os.mkdir('Data/'+self.name_model)
 
 
-    def read_merger_rate_file(self, delimiter="\t"):
+    def read_merger_rate_file(self, delimiter='\t'):
         """Read the merger rate file and stores data.
 
         Parameters
@@ -73,13 +110,13 @@ class AstroModel:
                                     "\t 1) If the merger rate file was not created, run method "
                                     "create_merger_rate_file()\n"
                                     "\t 2) If the merger rate file was created, check that the file "
-                                    "is located at {}".format(file_mrd))
+                                    "is located at {}".format(self.file_mrd))
         # Read file
-        data_mrd = pd.read_csv(self.file_mrd, delimiter=delimiter)
+        print(delimiter)
+        data_mrd = pd.read_csv(self.file_mrd, sep=delimiter, names=['z', 'mr_df'])
 
         # Update instance variables
         self.loaded_flag["mrd"] = True
-        #self.file_mrd = output_file
         self.data_mrd = data_mrd
 
     def create_merger_rate_file(self, input_file, range_z, delimiter="\t"):
@@ -513,7 +550,7 @@ class AstroModel:
         tobs = np.rint(tobs).astype(int)
         # Check that the merger rate density is loaded
         if not self.loaded_flag["mrd"]:
-            raise ValueError("Merger rate density is not loaded.")
+            self.read_merger_rate_file()
 
         # Compute number of sources. Be careful, the range of redshift used will be the one in the merger rate density
         # file

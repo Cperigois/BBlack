@@ -2,7 +2,8 @@ _**BBlack** is program developed by Carole Perigois ([carolperigois@outlook.com]
 
 # BBlack
 
-BBlack is a program made to compare astrophysical models, using Gravitational wave observations and hierarchical bayesian inference. This program has threen main usages:
+BBlack is a program made to compare astrophysical models, using Gravitational wave observations and hierarchical 
+bayesian inference. This program has threen main usages:
 
 * The build of astrophysical catalogues
 * The hierachical bayesian analysis to compare models to each other
@@ -26,17 +27,8 @@ numpy, pandas, astropy, **pycbc (set it to version 1.18.0, there is a bug for hi
     <img width="100%" src="Data/Block_example.png">
 </p>
 
-\#--------------------------------------TO BE FILLED------------------------------------------
+* ** Run the script getting_started.py.
 
-# Load an prepare your astromodel:
-
-astroModelParameters = {'name' :,    # (str) Name used to label all files related to this model
-                        'pathToCosmorate' :,   # (str) Path to the output of cosmorate, catalogs and merger rate density files.
-                        'redshiftRange' :,  # (float) maximal redshift considered in the study, should be a multiple of deltaz (bin used in the *MRD* file, output of cosmorate)
-                        'sizeCatalog' :,    
-                        }
-
-\#--------------------------------------------------------------------------------------------
 
 
 # Structure recomandation
