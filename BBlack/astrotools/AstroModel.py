@@ -1,32 +1,33 @@
 import os
-import BBlack.Example.Parameters as P
 import BBlack.astrotools.utility_functions as UF
 import os.path
 import pandas as pd
 import numpy as np
 from astropy.cosmology import Planck15
+import BBlack.astrotools.auxiliary_cosmorate as auxiliary_cosmorate
 import astropy.units as u
 import random
 import concurrent.futures
 import emcee
 import scipy.stats
+import re
 import json
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 class AstroModel:
 
-    file = '../Params.json'
-    with open(file, 'r') as f:
-        P = json.load(f)
 
-    def __init__(self, name, path_to_catalogs, path_to_MRD,  observables = ['Mc','q','z'], spins='InCat', duration=1, catsize=None):
+
+    def __init__(self, name, path_to_catalogs, path_to_MRD,  observables = ['Mc','q','z'], spins='InCat',
+                 duration=1, catsize_opt="Fixed"):
         """Create an instance of your model.
          Parameters
          ----------
          cat_name : str
              Name of the reshaped catalogue in the folder catalogue
          duration : int of float
-             Duration of your supposed catalogue, ie your initial catalogue is showing all sources arriving on the detector in X years.
+             Duration of your supposed catalogue, ie your initial catalogue is showing all sources arriving on the
+             detector in X years.
              (default duration = 1)
          original_cat_path : str
              Path to your original catalogue
@@ -38,7 +39,8 @@ class AstroModel:
          spin_option : str
             Choose an option to eventually generate the spin among {"Zeros", "Isotropic", "Dynamic"}. Default is 'Zeros'
          flags: dict
-            Dictionary of a possible flag column in your catalogue (Can be used to distinguish the type of binary, the formation channel...)
+            Dictionary of a possible flag column in your catalogue (Can be used to distinguish the type of binary, the
+            formation channel...)
          """
 
         # Set class variables
@@ -48,48 +50,44 @@ class AstroModel:
         self.observables = observables
         self.spin_option = spins
         self.file_mrd = path_to_MRD
+        self.file_mrd_output = '../Run/Savings/Astro_Models/MergerRateDensity/Mrd_'+name+'.dat'
+        self.path_to_catalogs = path_to_catalogs
+        self.catsize_opt = catsize_opt
+        self.duration = duration
+
 
     def process_astro_model(self):
-        # ---------------------------------------------      Main code       ---------------------------------------------------
-
+        # -------------------------------------      Main code       ---------------------------------------------------
+        file = '../Params.json'
+        with open(file, 'r') as f:
+            self.P = json.load(f)
         # Make sure directories are created
-        if not os.path.exists(P['name_of_project_folder']):
-            os.mkdir(P['name_of_project_folder'])
-        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/"):
-            os.mkdir("Astro_Models/")
-        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/Catalogs/"):
-            os.mkdir("Astro_Models/Catalogs")
-        if not os.path.exists(P['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
-            os.mkdir("Astro_Models/MergerRateDensity")
+        if not os.path.exists(self.P['name_of_project_folder']):
+            os.mkdir(self.P['name_of_project_folder'])
+        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/"):
+            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/")
+        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/Catalogs/"):
+            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/Catalogs")
+        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
+            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/MergerRateDensity")
 
-        self.prepare_model()
-
-        # Create the merger rate file
-        self.create_merger_rate_file(range_z=P['redshift_range'], delimiter="\t")
-        self.create_catalog_file(delimiter="\t", input_catname_beg='BBHs_spin2020_', input_catname_end='_50.dat')
-        # Get all the parameters set in astro_model_param.py
-        #dir_cosmo_rate, astro_param, co_param, mag_gen_param, name_spin_model = return_astro_param(sys.argv)
 
         # CosmoRate processing
-        process_cosmorate(path_dir_cr=dir_cosmo_rate, num_var_header=num_header_cosmorate, del_cosrate=del_cosrate)
+        auxiliary_cosmorate.process_cosmorate(path_dir_cr=self.path_to_catalogs)
 
         # Create the merger rate file
-        model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
+        self.create_merger_rate_file(range_z=self.P['redshift_range'], delimiter="\t")
 
+        # Create the merger rate file
+        #model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
+        if self.catsize_opt == "Fixed":
+            self.catsize = self.P['catalog_size']
+        else:
+            self.catsize = self.sources_in_tobs_time(self.duration)
         # Create the catalog
-        model_astro.create_catalog_file(dir_cosmorate=dir_cosmo_rate, num_cat=num_cat)
-        if catsize == None :
-            self.catsize = self.sources_in_tobs_time(duration)
-        else :
-            self.catsize = catsize
+        self.create_catalog_file()
 
 
-
-    def prepare_model(self):
-        if os.path.exists('Data/') == False:
-            os.mkdir('Data')
-        if os.path.exists('Data/'+self.name_model) == False:
-            os.mkdir('Data/'+self.name_model)
 
 
     def read_merger_rate_file(self, delimiter='\t'):
@@ -105,21 +103,20 @@ class AstroModel:
         """
 
         # Check file existence
-        if not os.path.isfile(self.file_mrd):
+        if not os.path.isfile(self.file_mrd_output):
             raise FileNotFoundError("\nThe file for the merger rate density of the model could not be found.\n"
                                     "\t 1) If the merger rate file was not created, run method "
                                     "create_merger_rate_file()\n"
                                     "\t 2) If the merger rate file was created, check that the file "
-                                    "is located at {}".format(self.file_mrd))
+                                    "is located at {}".format(self.file_mrd_output))
         # Read file
-        print(delimiter)
-        data_mrd = pd.read_csv(self.file_mrd, sep=delimiter, names=['z', 'mr_df'])
+        data_mrd = pd.read_csv(self.file_mrd_output, sep=delimiter, index_col = None)
 
         # Update instance variables
         self.loaded_flag["mrd"] = True
         self.data_mrd = data_mrd
 
-    def create_merger_rate_file(self, input_file, range_z, delimiter="\t"):
+    def create_merger_rate_file(self, range_z, delimiter="\t"):
         """Create the merger rate file using the information provided by CosmoRate. In current version, the file
         has only with two columns : redshift and merger rate density source frame; and the file is found by
         matching the regex 'MRD'.
@@ -135,13 +132,13 @@ class AstroModel:
             Delimiter used to separate columns in merger rate file (default = "\t")
         """
 
-        if not os.path.isfile(self.path+input_file):
+        if not os.path.isfile(self.file_mrd):
             raise FileNotFoundError("\nThe source file for the merger rate density of CosmoRate could not be found.\n"
                                     "Check that the file is in {} and that there is only one file containing the "
-                                    "string 'MRD'".format(self.path))
+                                    "string 'MRD'".format(self.file_mrd))
 
         # Read file
-        data_original = np.loadtxt(self.path+input_file, skiprows=1)
+        data_original = np.loadtxt(self.file_mrd, skiprows=1)
 
         # Check that range_z is a multiple of deltaz of cosmoRate
         redshift = data_original[:, 0]
@@ -153,11 +150,11 @@ class AstroModel:
         # Compute merger rate density and merger rate in detector-frame. Planck 15 cosmology is used here
         mrd_source_frame = data_original[:, 1]
         mrd_detector_frame = np.array([mrd_s * (1.0/(1.0 + z)) for mrd_s, z in zip(mrd_source_frame, redshift)])
-        dvc_dz = np.array([4. * np.pi * self.cosmo.differential_comoving_volume(z).to(u.Gpc ** 3 / u.sr).value
+        dvc_dz = np.array([4. * np.pi * Planck15.differential_comoving_volume(z).to(u.Gpc ** 3 / u.sr).value
                            for z in redshift])
         mr_detector_frame = np.array([dvc * mr_df for dvc, mr_df in zip(dvc_dz, mrd_detector_frame)])
 
-        output_name = 'Data/'+self.name_model+'/Mrd.dat'
+        output_name = self.P['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
         self.file_mrd = output_name
         # Create and write file.
         with open(output_name, "w") as fileout:
@@ -169,7 +166,7 @@ class AstroModel:
                 else:
                     return
 
-    def read_catalog_file(self, dir_cat=None, delimiter="\t"):
+    def read_catalog_file(self, delimiter="\t"):
         """Read the catalog file and stores data.
 
         Parameters
@@ -189,12 +186,12 @@ class AstroModel:
         #file_cat = self.cat_file
 
         # Check file existence
-        if not os.path.isfile(self.cat_file):
+        if not os.path.isfile(self.path_to_catalogs):
             raise FileNotFoundError("\nThe file for the model's catalog could not be found.\n"
                                     "\t 1) If the catalog was not created, run method "
                                     "create_catalog_file()\n"
                                     "\t 2) If the catalogfile was created, check that the file "
-                                    "is located at {}".format(file_cat))
+                                    "is located at {}".format(self.path_to_catalogs))
 
         # Read catalog
         df = pd.read_csv(self.cat_file, delimiter=delimiter)
@@ -229,8 +226,8 @@ class AstroModel:
             Delimiter used to separate columns in catalog file (default = "\t")
         """
 
-        # Set name of catalog file
-        self.cat_file = "Data/"+self.name_model+"/Catalog_" + self.name_model+".dat"
+        # Set name of catalog fileself.P['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
+        self.cat_file = self.P['name_of_project_folder']+'/Astro_Models/Catalogs/Catalog_'+self.name+'.dat'
         try:
             assert not os.path.isfile(self.cat_file) or overwrite
         except AssertionError:
@@ -246,27 +243,24 @@ class AstroModel:
         #    raise ValueError("Ran CosmoRate pre-processing routines before creating catalog file.")
 
         # Read merger file if it was not done before
-        if not self.loaded_flag["mrd"]:
-            self.read_merger_rate_file()
+        self.read_merger_rate_file()
 
         # Read merger rate, and create a cumulative sum from it. Then randomly generate points in [0,1] and use
         # cdf values as bins. The number that fall in each bin, is then the number of sources associated with
         # the redshift bin
         mr_df = self.data_mrd['mr_df']
+
         cdf = np.append(0.0, np.cumsum(mr_df/mr_df.sum()))
-
+        print(cdf)
         counts, bin_edges = np.histogram(np.random.rand(self.catsize), bins=cdf)
-
+        print(len(counts))
         # Initiate dataframe that will contains catalog values
         df_final = pd.DataFrame(columns=self.observables)
 
         # Get the names of catalog files from CosmoRate
-        dir_catfile = self.path + "catalogs/"
-        n = os.system("ls " + dir_catfile + " | wc - l")
-        print(n)
-        print(counts)
-        print(len(counts))
-
+        dir_catfile = self.path_to_catalogs + "catalogs/"
+        n = os.listdir(dir_catfile)
+        regex = re.search('([A-Za-z0-9_]*_)\d+(_[A-Za-z0-9]*.dat)', n[0] )
         print("*******  START : CATALOG CREATION  *******")
 
         # Loop over redshift bins
@@ -275,9 +269,9 @@ class AstroModel:
             # Read CosmoRate catalog. So far the name of catalog files is  "identifier_file_i_50.dat"
             # If CosmoRate changes, updates this part too.
 
-            cat_source_name = dir_catfile + input_catname_beg + str(i + 1) + input_catname_end
-            df = pd.read_csv(cat_source_name, delimiter="\t" )
-            df.rename(columns=params.input_parameters, inplace=True)
+            cat_source_name = dir_catfile + regex.group(1) + str(i + 1) + regex.group(2)
+            df = pd.read_csv(cat_source_name, delimiter="\t")
+            df.rename(columns=self.P['input_parameters'], inplace=True)
 
             # Map to Mc, q if they are selected as parameters
             if "Mc" in self.observables or "q" in self.observables:
@@ -303,12 +297,12 @@ class AstroModel:
             #    df["Dl"] = Cosmo.luminosity_distance(df["z"]).value
 
             if "chip" in self.observables and "chip" not in df.columns :
-                df["chip"] = self.comp_chip(m1=df["m1"], m2 =df["m2"], cos_theta1=df["costheta1"],
+                df["chip"] = self.comp_chip(m1=df["m1"], m2=df["m2"], cos_theta1=df["costheta1"],
                                                               cos_theta2=df['costheta2'], chi1=df['chi1'],
                                                               chi2=df['chi2'])
             #  Select only relevant parameters
             df = df[self.observables]
-
+            print('check 3')
             # Concatenate dataframe with correct number of elements
             for _ in range(int(c/len(df))):
                 df_final = pd.concat([df_final, df])

@@ -3,12 +3,27 @@ import os
 import json
 
 def set(_projectFolder, _paramDictionnary, _advParamDictionnary):
-    output = _paramDictionnary.update(_advParamDictionnary)
-    print("Started writing dictionary to the file ", _projectFolder,'Param.json')
-    with open(_projectFolder+'/Param.json', "w") as file:
-        json.dump(output, file)  # encode dict into JSON
-    with open('Param.json', "w") as file:
-        json.dump(output, file)  # encode dict into JSON
+    output = {**_paramDictionnary, **_advParamDictionnary}
+    am_list = []
+
+    for am in output['astro_model_list']:
+        am_list.append(am.name)
+    output['astro_model_list'] = am_list
+
+    for mcana in output['compute_multi_channel'].keys():
+        print(mcana)
+        list = []
+        for am in output['compute_multi_channel'][mcana] :
+            print(am.name)
+            list.append(am.name)
+        output['compute_multi_channel'][mcana] = list
+    print("Started writing dictionary to the file ", _projectFolder+'/Param.json')
+    print(output)
+    json_object = json.dumps(output, indent=len(output.keys()))
+    with open(_projectFolder+'/Params.json', "w") as file:
+        file.write(json_object)  # encode dict into JSON
+    with open('../Params.json', "w") as file:
+        file.write(json_object)  # encode dict into JSON
     print("Done writing dict into Params.json file")
 
 def clean():
@@ -47,6 +62,7 @@ input_parameters = {
 
     "ID": "id",   # Id of the binary
     "time_delay [yr]": "timeDelay",   # time delay
+    "time_delay": "timeDelay",   # time delay
     "mZAMS1" : "mzams1",   # Zero Age Main Sequence mass of the 1st component
     "mZAMS2" : "mzams2",   # Zero Age Main Sequence mass of the 2nd component
     "M_SC" : "m_sc",   # mass of star cluster
@@ -76,7 +92,9 @@ samplingBandwidthKDE = 0.075  # KDE bandwidth to use
 Parameters for the computation of the match and the efficiency.
 """
 
-bayesModelProcessingWaveformApproximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD" but not accounting for precession
+bayesModelProcessingWaveformApproximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD"
+                                                          # but not accounting for precession
+option_SNR_computation = 0
 bayesModelProcessingBandWidthKDE = 0.075  # KDE bandwidth to use
 
 bayesOptionComputeLikelihood = "All"
@@ -89,7 +107,6 @@ bayesOptionMultiChannel = "NoRate"
 These parameters are used to select the confident events from LVK.
 The standard population paper uses pastro>0.9, FAR<0.25 and no constrain on the SNR (i.e. SNR>0)
 """
-
 
 pAstroLimit = 0.9 # use only GW events with a pastro > pAstroLimit
 farLimit = 0.25 # use only GW events with a far < farLimit

@@ -2,7 +2,7 @@ import os
 import re
 import json
 import BBlack.astrotools.utility_functions as UF
-import BBlack.Example.Parameters as P
+
 
 #----------------------------------------------------------------------------------
 
@@ -11,7 +11,7 @@ import BBlack.Example.Parameters as P
 regex_catalog = r'^([A-Za-z0-9_]*)_\d+().dat$'
 
 
-def process_cosmorate(path_dir_cr, num_var_header, del_cosrate="\t", del_cat="\t"):
+def process_cosmorate(path_dir_cr, del_cosmorate="\t", del_cat="\t"):
     """Main function called to process CosmoRate files in order to make then in appropriate format for the
     Bayesian analysis.
 
@@ -41,7 +41,7 @@ def process_cosmorate(path_dir_cr, num_var_header, del_cosrate="\t", del_cat="\t
     prepare_directory(path_dir_cr, logfile)
 
     # Rewrite the header of the catalog files according to BayesBlack standard
-    rewrite_header_cosmorate(path_dir_cr, logfile, num_var_header, delimiter_cr=del_cosrate, delimiter_new_cat=del_cat)
+    rewrite_header_cosmorate(path_dir_cr, logfile, delimiter_cr=del_cosmorate, delimiter_new_cat=del_cat)
     print("*******  END : COSMORATE PRE-PROCESS  *******")
 
 
@@ -104,7 +104,7 @@ def prepare_directory(path_dir_cr, logfile):
         raise FileNotFoundError("No catalogs files found. Check the regex pattern in 'auxiliary_cosmorate.py'.")
 
 
-def rewrite_header_cosmorate(path_dir_cr, logfile, num_var_header, delimiter_cr="\t", delimiter_new_cat="\t"):
+def rewrite_header_cosmorate(path_dir_cr, logfile, delimiter_cr="\t", delimiter_new_cat="\t"):
     """Rewrite the header of each CosmoRate catalog files to be adequate with the header defined for the Bayesian
     analysis.
 
@@ -150,16 +150,15 @@ def rewrite_header_cosmorate(path_dir_cr, logfile, num_var_header, delimiter_cr=
             line_header = list_of_lines[0]
             line_header = ''.join(re.split('\\s*#\\s*', line_header)).replace("\n", "")
 
-            # Check that the number of variables found is the same than the one in input
-            if len(line_header.split(delimiter_cr)) != num_var_header:
-                raise IndexError(f"Problems in header number of variables. Check that there are indeed "
-                                 f"{num_var_header} and that 'del_cosrate' is correctly set.")
-
+            parameters = '../Params.json'
+            with open(parameters, 'r') as f:
+                P = json.load(f)
+            param = P['input_parameters']
             # Try to apply the mapping for variable names. If the variable was already mapped towards BayesBlack
             # variables, do not map it, otherwise try the mapping and raise an exception if error
             try:
-                mapped_param = list(map(lambda x: param.mapping_header_cosmoRate[x] if x not in
-                                    param.mapping_header_cosmoRate.values() else x, line_header.split(delimiter_cr)))
+                mapped_param = list(map(lambda x: param[x] if x not in
+                                    param.values() else x, line_header.split(delimiter_cr)))
             except Exception as e:
                 raise MappingError(e, delimiter_cr)
 
