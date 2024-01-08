@@ -11,8 +11,7 @@ class ObservingRun:
 
     """
 
-    available_obs_runs = ["O1", "O2", "O3a", "O3b","O3a_CAT", 'O3b_CAT',"O3a_FAR","O3a_pastro", 'O3b_pastro']
-    co_type = ["BBH", "BNS", "BHNS"]
+
 
 
     def __init__(self, name_obs_run, co_only=None, event_par=None, events_to_remove=None, events_to_keep_only=None,

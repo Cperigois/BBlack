@@ -2,22 +2,22 @@ import matplotlib.pyplot as plt
 import pycbc.psd
 import os
 import numpy as np
-from Project_Modules.utility_functions import clean_path
+from BBlack.astrotools.utility_functions import clean_path
 from decimal import Decimal
-import Parameters as param
+import BBlack.Run.advanced_params as params
 
 
 class DetectorGW:
 
 
 
-    def __init__(self, detector_name, delta_freq=None, low_freq=20.0, high_freq=1023.75, path_dir_psd=None):
+    def __init__(self, name, delta_freq=None):
         """Function that creates an instance of a detector object. In particular, it sets the value for the PSD of the
         detector
 
         Parameters
         ----------
-        detector_name : str
+        name : str
             Name of selected detector
         delta_freq : float
             Value of frequency interval chosen
@@ -29,16 +29,16 @@ class DetectorGW:
             Path towards the PSD file if the PSD is imported from a file
         """
 
-        if detector_name not in param.detectors_avail:
+        if name not in param.detectors_avail:
             raise ValueError("Select a detector in list {}".format(self.detectors_avail))
 
         # Assign name and get psd attributes from dictionary psd_attributes
-        self.detector_name = detector_name
-        self.psd_name = param.psd_attributes[self.detector_name]["psd_name"]
-        self.in_pycbc = param.psd_attributes[self.detector_name]["in_pycbc"]
-        self.min_freq = param.psd_attributes[self.detector_name]["min_freq"]
-        self.max_freq = param.psd_attributes[self.detector_name]["max_freq"]
-        self.delta_freq_min = param.psd_attributes[self.detector_name]["delta_freq_min"]
+        self.name = name
+        self.psd_name = param.psd_attributes[self.name]["psd_name"]
+        self.in_pycbc = param.psd_attributes[self.name]["in_pycbc"]
+        self.min_freq = param.psd_attributes[self.name]["min_freq"]
+        self.max_freq = param.psd_attributes[self.name]["max_freq"]
+        self.delta_freq_min = param.psd_attributes[self.name]["delta_freq_min"]
 
         # Set the frequency interval
         if delta_freq is not None:
@@ -135,7 +135,7 @@ class DetectorGW:
         ax.set_yscale("log")
         ax.plot(frequency, self.psd_data, lw=3)
         ax.set_xlabel("Frequency")
-        ax.set_ylabel("PSD detector {}".format(self.detector_name))
+        ax.set_ylabel("PSD detector {}".format(self.name))
 
         # Show the plot
         plt.show()

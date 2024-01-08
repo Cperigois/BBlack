@@ -14,11 +14,10 @@ import re
 import json
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+
+params = json.load(open('Run/Params.json','r'))
 class AstroModel:
-
-
-
-    def __init__(self, name, path_to_catalogs, path_to_MRD,  observables = ['Mc','q','z'], spins='InCat',
+    def __init__(self, name, path_to_catalogs = None, path_to_MRD = None,  observables = ['Mc','q','z'], spins='InCat',
                  duration=1, catsize_opt="Fixed"):
         """Create an instance of your model.
          Parameters
@@ -45,48 +44,51 @@ class AstroModel:
 
         # Set class variables
         self.name = name
-        # Flags for loading data
-        self.loaded_flag = {"cat": False, "mrd": False}
-        self.observables = observables
-        self.spin_option = spins
-        self.file_mrd = path_to_MRD
-        self.file_mrd_output = '../Run/Savings/Astro_Models/MergerRateDensity/Mrd_'+name+'.dat'
-        self.path_to_catalogs = path_to_catalogs
-        self.catsize_opt = catsize_opt
-        self.duration = duration
+
+        try:
+            self.load()
+        except:
+            self.observables = observables
+            self.spin_option = spins
+            self.file_mrd = path_to_MRD
+            self.file_mrd_output = 'Run/'+params['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+name+'.dat'
+            self.path_to_catalogs = path_to_catalogs
+            self.catsize_opt = catsize_opt
+            self.duration = duration
+            self.creation_flag = {"cat": False, "mrd": False}
+            self.loaded_flag = {"cat": False, "mrd": False}
+            self.process_astro_model()
+            self.save()
+
 
 
     def process_astro_model(self):
         # -------------------------------------      Main code       ---------------------------------------------------
-        file = '../Params.json'
-        with open(file, 'r') as f:
-            self.P = json.load(f)
         # Make sure directories are created
-        if not os.path.exists(self.P['name_of_project_folder']):
-            os.mkdir(self.P['name_of_project_folder'])
-        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/"):
-            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/")
-        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/Catalogs/"):
-            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/Catalogs")
-        if not os.path.exists(self.P['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
-            os.mkdir(self.P['name_of_project_folder']+"/Astro_Models/MergerRateDensity")
+        if not os.path.exists('Run/'+params['name_of_project_folder']):
+            os.mkdir('Run/'+params['name_of_project_folder'])
+        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/"):
+            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/")
+        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/Catalogs/"):
+            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/Catalogs")
+        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
+            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/MergerRateDensity")
 
 
         # CosmoRate processing
         auxiliary_cosmorate.process_cosmorate(path_dir_cr=self.path_to_catalogs)
 
         # Create the merger rate file
-        self.create_merger_rate_file(range_z=self.P['redshift_range'], delimiter="\t")
+        self.create_merger_rate_file(range_z=params['redshift_range'], delimiter="\t")
 
         # Create the merger rate file
         #model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
         if self.catsize_opt == "Fixed":
-            self.catsize = self.P['catalog_size']
+            self.catsize = params['catalog_size']
         else:
             self.catsize = self.sources_in_tobs_time(self.duration)
         # Create the catalog
         self.create_catalog_file()
-
 
 
 
@@ -154,10 +156,8 @@ class AstroModel:
                            for z in redshift])
         mr_detector_frame = np.array([dvc * mr_df for dvc, mr_df in zip(dvc_dz, mrd_detector_frame)])
 
-        output_name = self.P['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
-        self.file_mrd = output_name
         # Create and write file.
-        with open(output_name, "w") as fileout:
+        with open(self.file_mrd_output, "w") as fileout:
             fileout.write(delimiter.join(["z", "mrd_sf", "mrd_df", "mr_df"]) + "\n")
             for z, mrd_sf, mrd_df, mr_df in zip(redshift, mrd_source_frame, mrd_detector_frame, mr_detector_frame):
                 if z <= range_z:
@@ -226,8 +226,8 @@ class AstroModel:
             Delimiter used to separate columns in catalog file (default = "\t")
         """
 
-        # Set name of catalog fileself.P['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
-        self.cat_file = self.P['name_of_project_folder']+'/Astro_Models/Catalogs/Catalog_'+self.name+'.dat'
+        # Set name of catalog fileparams['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
+        self.cat_file = params['name_of_project_folder']+'/Astro_Models/Catalogs/Catalog_'+self.name+'.dat'
         try:
             assert not os.path.isfile(self.cat_file) or overwrite
         except AssertionError:
@@ -253,7 +253,7 @@ class AstroModel:
         cdf = np.append(0.0, np.cumsum(mr_df/mr_df.sum()))
         print(cdf)
         counts, bin_edges = np.histogram(np.random.rand(self.catsize), bins=cdf)
-        print(len(counts))
+        print(enumerate(counts))
         # Initiate dataframe that will contains catalog values
         df_final = pd.DataFrame(columns=self.observables)
 
@@ -264,14 +264,14 @@ class AstroModel:
         print("*******  START : CATALOG CREATION  *******")
 
         # Loop over redshift bins
-        for i, c in enumerate(counts):
+        for i, c in enumerate(counts[:len(counts)-1]):
 
             # Read CosmoRate catalog. So far the name of catalog files is  "identifier_file_i_50.dat"
             # If CosmoRate changes, updates this part too.
 
-            cat_source_name = dir_catfile + regex.group(1) + str(i + 1) + regex.group(2)
+            cat_source_name = dir_catfile + regex.group(1) + str(i+1) + regex.group(2)
             df = pd.read_csv(cat_source_name, delimiter="\t")
-            df.rename(columns=self.P['input_parameters'], inplace=True)
+            df.rename(columns=params['AM_params']['input_parameters'], inplace=True)
 
             # Map to Mc, q if they are selected as parameters
             if "Mc" in self.observables or "q" in self.observables:
@@ -302,13 +302,12 @@ class AstroModel:
                                                               chi2=df['chi2'])
             #  Select only relevant parameters
             df = df[self.observables]
-            print('check 3')
             # Concatenate dataframe with correct number of elements
             for _ in range(int(c/len(df))):
                 df_final = pd.concat([df_final, df])
             ind_list = random.sample(range(len(df)), c % len(df))
             df_final = pd.concat([df_final, df.iloc[ind_list]])
-            print(f"Redshift bin {i+1}, current aggregated length dataframe {df_final.shape[0]}")
+            print(f"Redshift bin {i+1}, current aggregated length dataframe {c}")
 
         # Write dataframe to file
         df_final.to_csv(self.cat_file, sep=delimiter, index=False, float_format="%.4f")
@@ -652,3 +651,15 @@ class AstroModel:
         chipmax = np.maximum(chip1, chip2)
         chip = chipmax / ((2. + (3. * m2) / (2. * m1)) * m1 * m1)
         return chip
+    def load(self):
+        """try load self.name.txt"""
+        path = '/Run/'+params['name_of_project_folder']+'/Astro_Models/'
+        file = open(path + self.name + '.pickle', 'r')
+        dataPickle = file.read()
+        file.close()
+        self.__dict__ = cPickle.loads(dataPickle)
+    def save(self):
+        path = '/Run/'+params['name_of_project_folder']+'/Astro_Models/'
+        file = open(path + self.name + '.pickle', 'x')
+        file.write(cPickle.dumps(self.__dict__))
+        file.close()
