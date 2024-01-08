@@ -8,31 +8,39 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import os
+import BBlack.GWtools.detector as Detector
 
 
 params = json.load(open('Params.json',r))
 
 def process_bayes_model(astro_model, params)
 
+    # Make sure directories are created
+    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/"):
+        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/")
+    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/Efficiency/"):
+        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/Efficiency")
+    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/Match_model/"):
+        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/Match_model")
 
+    bayes_model_processing_waveform_approximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD"
+    # but not accounting for precession
+    bayes_model_processing_bandwidth_KDE = 0.075  # KDE bandwidth to use
 
     # -------------------------------------------      User input       ------------------------------------------------
-
-    n_cpu = 1  # number of CPUs
-    approximant = "IMRPhenomPv2"  # waveform approximant
-    bw_method = 0.075  # KDE bandwidth to use
-    detector_name = "Livingston_O1"  # detector name
-    obs_run_name = "O1"  # observing run name
+    for obs in params['observing_runs'].keys():
+        run_nfo = pd.read_csv('Auxiliary_files/observing_runs_info/'+obs+'events.csv')
+        observing_run_info = observing_run_info[observing_run_info.]
+        n_cpu = np.maximum([params['observing_runs'][obs]['size'], params['n_cpu_max'] ]) # number of CPUs
+        approximant = params['bayes_model_params']["waveform_approximant"]  # waveform approximant
+        bw_method = params['bayes_model_params']["bandwidth_KDE"]   # KDE bandwidth to use
+        detector_name = params['observing_runs'][obs]['detector'] # detector name
+        detector = Detector.DetectorGW(detector_name, params['observing_runs'][obs]['delta_freq'])
+        obs_run_name = obs  # observing run name
 
     # -------------------------------------------      Main code       -------------------------------------------------
 
-    # Make sure directories are created
-    if not os.path.exists("Bayes_Models/"):
-        os.mkdir("Bayes_Models/")
-    if not os.path.exists("Bayes_Models/Efficiency/"):
-        os.mkdir("Bayes_Models/Efficiency")
-    if not os.path.exists("Bayes_Models/Match_model/"):
-        os.mkdir("Bayes_Models/Match_model")
+
 
     # Get all the parameters set in astro_model_param.py
     _, astro_param, co_param, mag_gen_param, name_spin_model = return_astro_param(sys.argv)

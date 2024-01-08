@@ -1,16 +1,15 @@
 import astrotools.AstroModel as AM
-#import bayesiantools.process_bayes_model as BA
+import bayesiantools.bayes_model as BA
 import sys
 import json
 import Run.getting_started
 
-
 if __name__ == '__main__':
-    print(sys.argv[1])
-    params = json.load(open(sys.argv[1]+'/Params.json'))
+    params = json.load(open('Run/Params.json', 'r'))
     for m in params.astroModelList:
-        m.process_astro_model(params)
-        #BA.process_bayes_model(m, params)
+        astromodel = AM.AstroModel(name=m)
+        astromodel.generate_samples()
+        BA.process_bayes_model(m, params)
         #BA.Compute_likelihood(m, params)
 
     mc = params.computeMultiChannel

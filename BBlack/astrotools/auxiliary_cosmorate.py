@@ -9,7 +9,7 @@ import BBlack.astrotools.utility_functions as UF
 # This expression is the one corresponding to catalogs' filenames
 #regex_catalog = r'^([A-Za-z0-9_]*)_\d+_(\d+).dat$'
 regex_catalog = r'^([A-Za-z0-9_]*)_\d+().dat$'
-
+params = json.load(open('Run/Params.json','r'))
 
 def process_cosmorate(path_dir_cr, del_cosmorate="\t", del_cat="\t"):
     """Main function called to process CosmoRate files in order to make then in appropriate format for the
@@ -150,10 +150,7 @@ def rewrite_header_cosmorate(path_dir_cr, logfile, delimiter_cr="\t", delimiter_
             line_header = list_of_lines[0]
             line_header = ''.join(re.split('\\s*#\\s*', line_header)).replace("\n", "")
 
-            parameters = '../Params.json'
-            with open(parameters, 'r') as f:
-                P = json.load(f)
-            param = P['input_parameters']
+            param = params['AM_params']['input_parameters']
             # Try to apply the mapping for variable names. If the variable was already mapped towards BayesBlack
             # variables, do not map it, otherwise try the mapping and raise an exception if error
             try:

@@ -12,6 +12,8 @@ import emcee
 import scipy.stats
 import re
 import json
+import pickle
+import pickletools
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
@@ -44,10 +46,8 @@ class AstroModel:
 
         # Set class variables
         self.name = name
-
-        try:
-            self.load()
-        except:
+        self.pkl_file = 'Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'
+        if not os.path.exists('Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'):
             self.observables = observables
             self.spin_option = spins
             self.file_mrd = path_to_MRD
@@ -59,6 +59,8 @@ class AstroModel:
             self.loaded_flag = {"cat": False, "mrd": False}
             self.process_astro_model()
             self.save()
+        else:
+            self.load()
 
 
 
@@ -310,7 +312,7 @@ class AstroModel:
             print(f"Redshift bin {i+1}, current aggregated length dataframe {c}")
 
         # Write dataframe to file
-        df_final.to_csv(self.cat_file, sep=delimiter, index=False, float_format="%.4f")
+        df_final.to_csv('Run/'+self.cat_file, sep=delimiter, index=False, float_format="%.4f")
         print("*******  END : CATALOG CREATION  *******")
 
     def sample_catalog(self, n_walkers, n_chain, bw_method, n_cpu):
@@ -377,7 +379,7 @@ class AstroModel:
         """
 
         n_walkers, n_chain, bw_method, cpu = args
-        n_dim = len(self.co_parameters)
+        n_dim = len(self.observables)
         print(f"cpu {cpu}, args {args}")
 
 
@@ -406,12 +408,11 @@ class AstroModel:
 
         # Main chain
         sampler.run_mcmc(state_ini, n_chain, progress=True)
-        #sampler.run_mcmc(state_ini, n_chain)
 
         # Flatten and restrict chains in the min/max range
         min_np = np.array(self.data_cat.min())
         max_np = np.array(self.data_cat.max())
-        samples = flatten_restrict_range_output_emcee(sampler, self.co_parameters, min_np, max_np)
+        samples = flatten_restrict_range_output_emcee(sampler, self.observables, min_np, max_np)
         return samples
 
     def hist(self, var, ax=None, bins=50, logx=False, logy=False, range_x=None, range_y=None,
@@ -651,15 +652,45 @@ class AstroModel:
         chipmax = np.maximum(chip1, chip2)
         chip = chipmax / ((2. + (3. * m2) / (2. * m1)) * m1 * m1)
         return chip
+
+    def generate_samples(self):
+        # -------------------------------------------      User input       --------------------------------------------
+
+        num_samples = params['sampling_params']['size']  # 100 #10000  # number of samples wanted
+        n_cpu = params['n_cpu_max']  # number of CPUs
+        n_walkers = params['sampling_params']['number_of_walkers']  # number of MCMC walkers
+        n_chain = params['sampling_params']['chain_length']  # 50 #500  # length of MCMC chain
+        bw_method = params['sampling_params']['bandwidth_KDE']  # KDE bandwidth to use
+        # -------------------------------------------      Main code       ---------------------------------------------
+
+        # Generate num_samples from the astro_model using MCMC
+        samples_final = pd.DataFrame()
+        n = 0
+        while n < num_samples:
+            samples = astro_model.sample_catalog(n_walkers=n_walkers, n_chain=n_chain,
+                                                 bw_method=bw_method, n_cpu=n_cpu)
+            samples_final = samples_final.append(samples)
+            n = len(samples_final)
+            print(n)
+
+        # Make sure directories for samples are created
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Samples/"):
+            os.mkdir('Run/' + params['name_of_project_folder'] + "/Samples/")
+
+        # Export the samples to a file
+        sample_file_name = "sampling_" + self.name + ".dat"
+        samples_final.to_csv("Samples/" + sample_file_name, sep="\t", index=False, float_format="%.4f")
+
     def load(self):
         """try load self.name.txt"""
-        path = '/Run/'+params['name_of_project_folder']+'/Astro_Models/'
-        file = open(path + self.name + '.pickle', 'r')
+        path = './Run/'+params['name_of_project_folder']+'/'
+        file = open(path + self.name + '.pickle', 'rb')
         dataPickle = file.read()
         file.close()
-        self.__dict__ = cPickle.loads(dataPickle)
+        self.__dict__ = pickle.loads(dataPickle)
+
     def save(self):
-        path = '/Run/'+params['name_of_project_folder']+'/Astro_Models/'
-        file = open(path + self.name + '.pickle', 'x')
-        file.write(cPickle.dumps(self.__dict__))
+        path = './Run/'+params['name_of_project_folder']+'/'
+        file = open(path + self.name + '.pickle', 'wb')
+        file.write(pickle.dumps(self.__dict__))
         file.close()

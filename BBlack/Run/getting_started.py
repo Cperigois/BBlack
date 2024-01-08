@@ -2,7 +2,6 @@ import BBlack.Run.advanced_params as AP
 import sys
 import os
 import json
-
 sys.path.append('../')
 import BBlack.astrotools.AstroModel as AM
 import BBlack.GWtools.detector as Detector
@@ -42,7 +41,7 @@ example_1 = AM.AstroModel(name="Example1", path_to_catalogs="./../BBHs_m01/",
                           path_to_MRD='./../BBHs_m01/MRD_spread_9Z_40_No_MandF2017_0.3_No_No_0.dat')
 
 example_2 = AM.AstroModel(name="Example2", path_to_catalogs="./../BBHs_m02/",
-                          path_to_MRD='./../../BBHs_m02/MRD_spread_9Z_40_No_MandF2017_0.3_No_No_0.dat')
+                          path_to_MRD='./../BBHs_m02/MRD_spread_9Z_40_No_MandF2017_0.3_No_No_0.dat')
 
 astro_model_list = [example_1.name, example_2.name]
 
@@ -52,10 +51,10 @@ astro_model_list = [example_1.name, example_2.name]
         List od available detectors : 
 """
 
-observing_runs = {'O1': {'detector': Detector.DetectorGW(name='Livingston_O1', delta_freq=1.0)},
-                  'O2' : {'detector': Detector.DetectorGW(name='Livingston_O2', delta_freq=1.0)},
-                  'O3a' : {'detector': Detector.DetectorGW(name='Livingston_O3a', delta_freq=1.0)},
-                  'O3b' : {'detector': Detector.DetectorGW(name='Livingston_O3b', delta_freq=1.0)}}
+observing_runs = {'O1': {'detector': 'Livingston_O1', 'deltafreq': 1.0},
+                  'O2': {'detector': 'Livingston_O2', 'deltafreq': 1.0},
+                  'O3a': {'detector': 'Livingston_O3a', 'deltafreq': 1.0},
+                  'O3b': {'detector': 'Livingston_O3b', 'deltafreq': 1.0}}
 
 
 """               *** Bayesian options ***                 """
@@ -80,7 +79,9 @@ param_dictionary = {'name_of_project_folder': name_of_project_folder,
                     'catalog_size': catalog_size,
                     'observables': observables,
                     'astro_model_list': astro_model_list,
-                    'compute_multi_channel': compute_multi_channel
+                    'observing_runs': observing_runs,
+                    'compute_multi_channel': compute_multi_channel,
+                    'n_cpu_max': n_cpu_max
                     }
 AP.set(name_of_project_folder, param_dictionary, AP.advParams)
 

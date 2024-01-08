@@ -5,7 +5,6 @@ import json
 
 def set(_projectFolder, _paramDictionnary, _advParamDictionnary):
     output = {**_paramDictionnary, **_advParamDictionnary}
-
     json_object = json.dumps(output, indent=len(output.keys()))
     with open('Run/Params.json', "w") as file:
         file.write(json_object)  # encode dict into JSON
@@ -68,11 +67,10 @@ spin_model = 'InCat'
 Parameters for the sampling of the catalogue.
 """
 
-samplingNumberWalkers = 16  # number of MCMC walkers
-samplingNumberChain = 500  # 50 #500  # length of MCMC chain
-samplingBandwidthKDE = 0.075  # KDE bandwidth to use
-
-
+sampling_size = 100 # suggested 100 for checks and 500000 for full analysis
+sampling_number_of_walkers = 16  # number of MCMC walkers
+sampling_chain_length = 500  # 50 #500  # length of MCMC chain
+sampling_bandwidth_KDE = 0.075  # KDE bandwidth to use
 
 """             *** Detector settings ***           """
 
@@ -81,7 +79,7 @@ Parameters for the sampling of the catalogue.
 """
 
 # List of accessible detectors from text file
-detectors_avail = ["Livingston_O1", "Livingston_O2", "Livingston_O3a", "Hanford_O1", "Hanford_O2",
+detectors_avail = ["Livingston_O1", "Livingston_O2", "Livingston_O3a", "Livingston_O3b", "Hanford_O1", "Hanford_O2",
                        "Hanford_O3a", "Virgo_O2", "Virgo_O3a", "LIGO_Design", "ET_Design"]
 
 # For psd read from files, the values were set when constructing the files
@@ -94,6 +92,8 @@ psd_attributes = {
         "Livingston_O2": {"psd_name": "Livingston_O2_psd", "in_pycbc": False, "min_freq": 16.0, "max_freq": 1023.75,
                           "delta_freq_min": 0.025},
         "Livingston_O3a": {"psd_name": "Livingston_O3a_psd", "in_pycbc": False, "min_freq": 16.0, "max_freq": 1023.75,
+                           "delta_freq_min": 0.025},
+        "Livingston_O3b": {"psd_name": "Livingston_O3b_psd", "in_pycbc": False, "min_freq": 16.0, "max_freq": 1023.75,
                            "delta_freq_min": 0.025},
         "Hanford_O1": {"psd_name": "Hanford_O1_psd", "in_pycbc": False, "min_freq": 16.0, "max_freq": 1023.75,
                        "delta_freq_min": 0.025},
@@ -129,13 +129,13 @@ available_obs_runs = ["O1", "O2", "O3a", "O3b", "O3a_CAT", "O3b_CAT", "O3a_FAR",
 Parameters for the computation of the match and the efficiency.
 """
 
-bayesModelProcessingWaveformApproximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD"
+bayes_model_processing_waveform_approximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD"
                                                           # but not accounting for precession
-option_sNRcomputation  = 0
-bayesModelProcessingBandWidthKDE = 0.075  # KDE bandwidth to use
+option_SNR_computation  = 0
+bayes_model_processing_bandwidth_KDE = 0.075  # KDE bandwidth to use
 
-bayesOptionComputeLikelihood = "All"
-bayesOptionMultiChannel = "NoRate"
+bayes_option_compute_likelihood = "All"
+bayes_option_multichannel = "NoRate"
 
 """             *** Parameter output ***           """
 
@@ -144,16 +144,18 @@ All parameters in this file has to end in the dictionnary, for the creation of t
 """
 
 advParams = {"AM_params": {'input_parameters': input_parameters, 'spin_model':spin_model},
-             "sampling_params" : {'samplingNumberWalkers': samplingNumberWalkers,
-                                  'samplingNumberChain': samplingNumberChain,
-                                  'samplingBandwidthKDE': samplingBandwidthKDE},
+             "sampling_params" : {'size': sampling_size,
+                                  'number_of_cpu': sampling_number_of_cpu,
+                                  'number_of_walkers': sampling_number_walkers,
+                                  'chain_length': sampling_number_chain,
+                                  'bandwidth_KDE': sampling_bandwidth_KDE},
              "detector_params" : {'detectors_avail': detectors_avail,
-                                  'psd_attribute': psd_attributes},
+                                  'psd_attributes': psd_attributes},
              "event_selection" : {'pAstroLimit':pAstroLimit,
                                   'farLimit':farLimit,
                                   'snrLimit':snrLimit},
-             "bayes_model_params": {'bayesModelProcessingWaveformApproximant': bayesModelProcessingWaveformApproximant,
-                                    'bayesModelProcessingBandWidthKDE': bayesModelProcessingBandWidthKDE,
-                                    'bayesOptionComputeLikelihood':bayesOptionComputeLikelihood,
-                                    'bayesOptionMultiChannel':bayesOptionMultiChannel}
+             "bayes_model_params": {'waveform_approximant': bayes_model_processing_waveform_approximant,
+                                    'bandwidth_KDE': bayes_model_processing_bandwidth_KDE,
+                                    'likelihood_option':bayes_option_compute_likelihood,
+                                    'multi_channel_option':bayes_option_multichannel}
              }

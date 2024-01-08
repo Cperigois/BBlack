@@ -4,12 +4,11 @@ import os
 import numpy as np
 from BBlack.astrotools.utility_functions import clean_path
 from decimal import Decimal
-import BBlack.Run.advanced_params as params
+import json
 
 
+params = json.load(open('Run/Params.json','r'))
 class DetectorGW:
-
-
 
     def __init__(self, name, delta_freq=None):
         """Function that creates an instance of a detector object. In particular, it sets the value for the PSD of the
@@ -29,46 +28,41 @@ class DetectorGW:
             Path towards the PSD file if the PSD is imported from a file
         """
 
-        if name not in param.detectors_avail:
-            raise ValueError("Select a detector in list {}".format(self.detectors_avail))
-
-        # Assign name and get psd attributes from dictionary psd_attributes
+        if name not in params['detector_params']['detectors_avail']:
+            raise ValueError("Select a detector in list {}, or add manually your detector in advanced params, "
+                             "and its psd as AuxiliaryFiles/PSDs/<detector_name>_psd.dat ".
+                             format(params['detector_params']['detectors_avail']))
         self.name = name
-        self.psd_name = param.psd_attributes[self.name]["psd_name"]
-        self.in_pycbc = param.psd_attributes[self.name]["in_pycbc"]
-        self.min_freq = param.psd_attributes[self.name]["min_freq"]
-        self.max_freq = param.psd_attributes[self.name]["max_freq"]
-        self.delta_freq_min = param.psd_attributes[self.name]["delta_freq_min"]
+        self.pkl_file = 'Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'
+        if not os.path.exists('Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'):
+            # Assign name and get psd attributes from dictionary psd_attributes
+            self.name = name
+            self.psd_name = params['detector_params']['psd_attributes'][self.name]["psd_name"]
+            self.in_pycbc = params['detector_params']['psd_attributes'][self.name]["in_pycbc"]
+            self.min_freq = params['detector_params']['psd_attributes'][self.name]["min_freq"]
+            self.max_freq = params['detector_params']['psd_attributes'][self.name]["max_freq"]
+            self.delta_freq_min = params['detector_params']['psd_attributes'][self.name]["delta_freq_min"]
+            self.path_dir_psd = 'AuxiliaryFiles/PSDs'
 
-        # Set the frequency interval
-        if delta_freq is not None:
-            self.check_data_freq(delta_freq)
-            self.delta_freq = delta_freq
-        else:
-            self.delta_freq = 0.025
+            # Set the frequency interval
+            if delta_freq is not None:
+                self.check_data_freq(delta_freq)
+                self.delta_freq = delta_freq
+            else:
+                self.delta_freq = 0.025
 
-        # Set the low frequency cutoff.
-        if low_freq < self.min_freq:
-            raise ValueError(f"low_freq {low_freq} is inferior to minimum frequency {self.min_freq}")
-        if Decimal(str(low_freq)) % Decimal(str(self.delta_freq)) != Decimal('0.0'):
-            raise ValueError(f"low_freq {low_freq} is not a multiple of delta_freq {self.delta_freq}.")
-        self.low_freq = low_freq
+            self.low_freq = self.min_freq
+            self.high_freq = self.max_freq
 
-        # Set the high frequency cutoff
-        if high_freq > self.max_freq:
-            raise ValueError(f"high_freq {high_freq} is superior to maximum frequency {self.max_freq}")
-        if high_freq <= self.low_freq:
-            raise ValueError(f"high_freq {high_freq} is inferior to low_freq {self.low_freq}")
-        if Decimal(str(high_freq)) % Decimal(str(self.delta_freq)) != Decimal('0.0'):
-            raise ValueError(f"high_freq {high_freq} is not a multiple of delta_freq {self.delta_freq}.")
-        self.high_freq = high_freq
+            # Compute the length using max_freq. Note that the psd generated also contain values that are inferior to
+            # self.low_freq. However, PyCBC will ignore values below the low_frequency cutoff when doing SNR computation.
+            self.length = int(self.high_freq / self.delta_freq) + 1
 
-        # Compute the length using max_freq. Note that the psd generated also contain values that are inferior to
-        # self.low_freq. However, PyCBC will ignore values below the low_frequency cutoff when doing SNR computation.
-        self.length = int(self.high_freq / self.delta_freq) + 1
+            # Read psd data
+            self.psd_data = self.read_psd_data(path_dir_psd=self.path_dir_psd)
+        else :
+            self.load()
 
-        # Read psd data
-        self.psd_data = self.read_psd_data(path_dir_psd=path_dir_psd)
 
     def check_data_freq(self, delta_freq):
         """This function checks that the value given for delta_freq is valid.
@@ -139,3 +133,16 @@ class DetectorGW:
 
         # Show the plot
         plt.show()
+
+    def load(self):
+        """try load self.name.txt"""
+        path = './Run/'+params['name_of_project_folder']+'/'
+        file = open(path + self.name + '.pickle', 'rb')
+        dataPickle = file.read()
+        file.close()
+        self.__dict__ = pickle.loads(dataPickle)
+    def save(self):
+        path = './Run/'+params['name_of_project_folder']+'/'
+        file = open(path + self.name + '.pickle', 'wb')
+        file.write(pickle.dumps(self.__dict__))
+        file.close()
