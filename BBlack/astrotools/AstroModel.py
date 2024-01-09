@@ -57,7 +57,7 @@ class AstroModel:
         self.name = name
         self.sample_file_name = "sampling_" + self.name + ".dat"
         self.pkl_file = 'Run/' + params['name_of_project_folder'] + '/' + self.name + '.pickle'
-        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '.pickle'):
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_AM.pickle'):
             self.observables = observables
             self.spin_option = spins
             self.file_mrd = path_to_MRD
@@ -697,13 +697,13 @@ class AstroModel:
     def load(self):
         """try load self.name.txt"""
         path = './Run/' + params['name_of_project_folder'] + '/'
-        file = open(path + self.name + '.pickle', 'rb')
+        file = open(path + self.name + '_AM.pickle', 'rb')
         data_pickle = file.read()
         file.close()
         self.__dict__ = pickle.loads(data_pickle)
 
     def save(self):
         path = './Run/' + params['name_of_project_folder'] + '/'
-        file = open(path + self.name + '.pickle', 'wb')
+        file = open(path + self.name + '_AM.pickle', 'wb')
         file.write(pickle.dumps(self.__dict__))
         file.close()

@@ -11,10 +11,11 @@ if __name__ == '__main__':
     for m in params['astro_model_list'].keys():
         astromodel = AM.AstroModel(name=m)
         astromodel.generate_samples()
-        BA.process_bayes_model(astromodel, params)
-        BA.compute_likelihood(astromodel, params)
+        BA.process_bayes_model(astromodel)
+        BA.compute_likelihood(astromodel)
 
     mc = params.computeMultiChannel
-    for k in mc.keys :
-        BA.MultichannelAnalysis(mc[k], params)
+    for key in mc.keys :
+        BA.MultichannelAnalysis(name=key)
+
     AP.clean()

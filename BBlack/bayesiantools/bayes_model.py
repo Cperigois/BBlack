@@ -1,3 +1,5 @@
+import pickle
+
 from BBlack.GWtools.detector import DetectorGW
 import concurrent.futures
 from BBlack.astrotools.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg
@@ -50,8 +52,10 @@ def process_bayes_model(astro_model, params):
         detector = Detector.DetectorGW(detector_name, params['event_selection']['runs_param'][obs]['delta_freq'])
 
         for var in params['observable_variation'].keys():
+            bayes_model_name = astro_model.name + '_' + obs + '_' + var
             # Initialise Bayesian model
-            bayes_model = BayesModel(astro_model=astro_model,
+            bayes_model = BayesModel(name=bayes_model_name,
+                                     astro_model=astro_model,
                                      observing_run_name=obs,
                                      event_list=event_list,
                                      detector=detector,
@@ -64,13 +68,13 @@ def process_bayes_model(astro_model, params):
                                            bw_method=bw_method)
             else:
                 bayes_model.model_matching(n_cpu=n_cpu, bw_method=bw_method)
-            print('Done! ',params['name_of_project_folder'], ' ', obs, ' ', var)
-
+            bayes_model.save()
+            print('Done! ', params['name_of_project_folder'], ' ', obs, ' ', var)
 
 
 class BayesModel:
 
-    def __init__(self, astro_model, observing_run_name, event_list, detector, variation, read_match=False,
+    def __init__(self, name, astro_model, observing_run_name, event_list, detector, variation, read_match=False,
                  read_eff=False):
         """Creates an instance of BayesModel using an astrophysical model, an observing run and a GW detector object.
 
@@ -91,38 +95,43 @@ class BayesModel:
         path_dir_eff : str
             Name of the directory where the detection efficiency of the model can be found
         """
-
+        self.name = name
         # Check that the astro model is loaded with the good parameters
-        if isinstance(astro_model, AM.AstroModel):
-            if not astro_model.loaded_flag["mrd"]:
-                astro_model.read_merger_rate_file()
-        self.astro_model = astro_model
-        #        else:
-        #            raise TypeError("\nError: astro_model is not of expected type.\n"
-        #                            "Please pass an instance of class AstroModel() in input.")
-        self.observing_run_name = observing_run_name
-        self.run_params = params['event_selection']['runs_param'][observing_run_name]
-        self.event_list = event_list
-        self.variation = variation
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_BM.pickle'):
+            if isinstance(astro_model, AM.AstroModel):
+                if not astro_model.loaded_flag["mrd"]:
+                    astro_model.read_merger_rate_file()
+            self.astro_model = astro_model
+            #        else:
+            #            raise TypeError("\nError: astro_model is not of expected type.\n"
+            #                            "Please pass an instance of class AstroModel() in input.")
+            self.observing_run_name = observing_run_name
+            self.run_params = params['event_selection']['runs_param'][observing_run_name]
+            self.event_list = event_list
+            self.variation = variation
 
-        if isinstance(detector, DetectorGW):
-            self.detector = detector
+            if isinstance(detector, DetectorGW):
+                self.detector = detector
+            else:
+                raise TypeError("\nError: detector is not of expected type.\n"
+                                "Please pass an instance of class DetectorGW() in input.")
+
+            # Set directories
+            self.path_dir_int = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Match_model/"
+            self.path_dir_eff = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Efficiency/"
+            self.file_name_match = (self.path_dir_int + self.astro_model.name + "_" + self.observing_run_name + "_" +
+                                    self.variation + ".dat")
+            self.file_name_efficiency = (self.path_dir_eff + self.astro_model.name + "_" + self.observing_run_name + "_"
+                                         + self.variation + ".dat")
+
+            # Number of sources in detector-frame (integrate merger rate in detector frame on the redshift range).
+            # Careful, this assumes that the merger rate file only contains values for the range of redshift considered
+            # in the Bayesian analysis.
+            self.n_sources = self.run_params['duration'] * np.sum(self.astro_model.data_mrd['mr_df']) \
+                             * round(self.astro_model.data_mrd['z'][1] - self.astro_model.data_mrd['z'][0], 5)
+
         else:
-            raise TypeError("\nError: detector is not of expected type.\n"
-                            "Please pass an instance of class DetectorGW() in input.")
-
-        # Set directories
-        self.path_dir_int = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Match_model/"
-        self.path_dir_eff = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Efficiency/"
-        self.file_name_match = self.path_dir_int + self.astro_model.name + "_" + self.observing_run_name + "_" + self.variation + ".dat"
-        self.file_name_efficiency = self.path_dir_eff + self.astro_model.name + "_" + self.observing_run_name + "_" + self.variation + ".dat"
-
-        # Number of sources in detector-frame (integrate merger rate in detector frame on the redshift range).
-        # Careful, this assumes that the merger rate file only contains values for the range of redshift considered
-        # in the Bayesian analysis.
-        self.n_sources = self.run_params['duration'] * np.sum(self.astro_model.data_mrd['mr_df']) \
-                         * round(self.astro_model.data_mrd['z'][1] - self.astro_model.data_mrd['z'][0], 5)
-
+            self.load()
         # Get the values for model's match with events
         self.match_model = {}
 
@@ -294,7 +303,8 @@ class BayesModel:
 
         # Generate model KDE
         kde_model = scipy.stats.gaussian_kde(
-            np.array([self.astro_model.data_cat[x] for x in params['observable_variation'][self.variation]['observables']]),
+            np.array(
+                [self.astro_model.data_cat[x] for x in params['observable_variation'][self.variation]['observables']]),
             bw_method=bw_method)
 
         # Get the list of events associated with this CPU
@@ -309,12 +319,15 @@ class BayesModel:
 
             # Generate prior KDE
             kde_prior = scipy.stats.gaussian_kde(np.array([data_prior[x]
-                                                           for x in params['observable_variation'][self.variation]['observables']]),
+                                                           for x in params['observable_variation'][self.variation][
+                                                               'observables']]),
                                                  bw_method="scott")
 
             # Compute the KDE for both the model and prior
-            values_kde_prior = kde_prior(np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
-            values_kde_model = kde_model(np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
+            values_kde_prior = kde_prior(
+                np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
+            values_kde_model = kde_model(
+                np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
 
             # Compute the integral match value
             int_event[event_name] = np.sum(values_kde_model / values_kde_prior) / len(data_post)
@@ -365,3 +378,17 @@ class BayesModel:
                 fileout.write(str(k) + "\t" + str(v) + "\n")
 
         return self.file_name_match
+
+    def load(self):
+        """try load self.name.txt"""
+        path = './Run/' + params['name_of_project_folder'] + '/'
+        file = open(path + self.name + '_BM.pickle', 'rb')
+        data_pickle = file.read()
+        file.close()
+        self.__dict__ = pickle.loads(data_pickle)
+
+    def save(self):
+        path = './Run/' + params['name_of_project_folder'] + '/'
+        file = open(path + self.name + '_BM.pickle', 'wb')
+        file.write(pickle.dumps(self.__dict__))
+        file.close()
