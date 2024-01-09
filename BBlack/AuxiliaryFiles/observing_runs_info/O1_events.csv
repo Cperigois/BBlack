@@ -1,3 +1,4 @@
-GW150914,BBH
-GW151012,BBH
-GW151226,BBH
+name,mass_1_source,mass_1_source_lower,mass_1_source_upper,mass_2_source,mass_2_source_lower,mass_2_source_upper,SNR,network_matched_filter_snr_lower,network_matched_filter_snr_upper,luminosity_distance,luminosity_distance_lower,luminosity_distance_upper,chi_eff,chi_eff_lower,chi_eff_upper,total_mass_source,total_mass_source_lower,total_mass_source_upper,chirp_mass_source,chirp_mass_source_lower,chirp_mass_source_upper,redshift,redshift_lower,redshift_upper,far,p_astro,p_astro_BBH,p_astro_BNS,p_astro_NSBH,pipeline
+GW150914,35.6,-3.1,4.7,30.6,-4.4,3.0,26.0,-0.2,0.1,440.0,-170.0,150.0,-0.01,-0.13,0.12,,,,28.6,-1.5,1.7,0.09,-0.03,0.03,1.0e-07,1.0,1.0,0.,0.,
+GW151012,23.2,-5.5,14.9,13.6,-4.8,4.1,10.0,0.,0.,1080.0,-490.0,550.0,0.05,-0.2,0.31,,,,15.2,-1.2,2.1,0.21,-0.09,0.09,0.00792,1.0,0.97,0.,0.03,GstLAL
+GW151226,13.7,-3.2,8.8,7.7,-2.5,2.2,13.1,0.,0.,450.0,-190.0,180.0,0.18,-0.12,0.2,,,,8.9,-0.3,0.3,0.09,-0.04,0.04,1.0e-07,1.0,1.0,0.,0.,

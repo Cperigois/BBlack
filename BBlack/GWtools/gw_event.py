@@ -2,8 +2,8 @@ import datetime
 import os
 import re
 import pandas as pd
-from Project_Modules import graphic_functions as gf
-from Project_Modules.utility_functions import clean_path, check_inputlist_with_accessible_values
+
+from BBlack.astrotools.utility_functions import check_inputlist_with_accessible_values, clean_path
 
 
 class GwEvent:
@@ -11,7 +11,7 @@ class GwEvent:
     # List of currently available parameters in the files.
     co_param = ["m1", "m2", "Mc", "Mt", "q", "chieff", "z", "chip"]
 
-    def __init__(self, name_event, read_posterior=True, read_prior=False, path_posterior=None, path_prior=None,
+    def __init__(self, name, read_posterior=True, read_prior=True, path_posterior=None, path_prior=None,
                  event_par=None):
         """This function creates an instance of GwEvent, by setting the name and path towards data.
 
@@ -32,11 +32,11 @@ class GwEvent:
             (default : None)
         """
 
-        self.name_event = name_event
+        self.name = name
         self.flags_loaded = {"post": False, "prior": False}
 
         # Set the date for the event. It assumes that the name of the event is GW/YEAR/MONTH/DAY (LIGO nomenclature)
-        match = re.match(r"GW(\d{2})(\d{2})(\d{2})", self.name_event)
+        match = re.match(r"GW(\d{2})(\d{2})(\d{2})", self.name)
         year, month, day = (2000 + int(match[1]), int(match[2]), int(match[3]))
         self.date_event = datetime.date(year, month, day)
 
@@ -49,11 +49,11 @@ class GwEvent:
 
         # Set the path towards posterior data
         if path_posterior is None:
-            path_posterior = "auxiliary_files/LVC_data/Posterior/"
+            path_posterior = "AuxiliaryFiles/LVC_data/Posterior/"
 
         # Set the path towards prior data
         if path_prior is None:
-            path_prior = "auxiliary_files/LVC_data/Prior/"
+            path_prior = "AuxiliaryFiles/LVC_data/Prior/"
 
         # If selected, load the posterior data using the path
         self.data_post = None
@@ -67,7 +67,7 @@ class GwEvent:
             self.data_prior = self.read_prior_data(path_prior)
             self.flags_loaded["prior"] = True
 
-    def read_posterior_data(self, path_dir="auxiliary_files/LVC_data/Posterior/"):
+    def read_posterior_data(self, path_dir="AuxiliaryFiles/LVC_data/Posterior/"):
         """This function reads and returns the posterior data for the given GW event.
 
         Parameters
@@ -82,12 +82,12 @@ class GwEvent:
         """
 
         # Set the name of the file and check for existence
-        name_file = clean_path(path_dir) + self.name_event + "_post.dat"
+        name_file = clean_path(path_dir) + self.name + "_post.dat"
         if not os.path.isfile(name_file):
             raise FileNotFoundError(f"File for posterior data not found at {name_file}")
 
         # Read the data
-        data_event_post = pd.read_csv(path_dir + self.name_event + "_post.dat", delimiter="\t")
+        data_event_post = pd.read_csv(path_dir + self.name + "_post.dat", delimiter="\t")
         data_event_post = data_event_post[self.event_par]
         self.flags_loaded["post"] = True
 
@@ -107,12 +107,12 @@ class GwEvent:
         """
 
         # Set the name of the file and check for existence
-        name_file = clean_path(path_dir) + self.name_event + "_prior.dat"
+        name_file = clean_path(path_dir) + self.name + "_prior.dat"
         if not os.path.isfile(name_file):
             raise FileNotFoundError(f"File for prior data not found at {name_file}")
 
         # Read the data and set flag to True
-        data_event_prior = pd.read_csv(path_dir + self.name_event + "_prior.dat", delimiter="\t")
+        data_event_prior = pd.read_csv(path_dir + self.name + "_prior.dat", delimiter="\t")
         data_event_prior = data_event_prior[self.event_par]
         self.flags_loaded["prior"] = True
 

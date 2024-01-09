@@ -3,9 +3,8 @@ from scipy.interpolate import interp1d
 from scipy.stats import maxwell
 import pandas as pd
 import os
-from math import ceil
-from math import pow
-
+from math import ceil, pow, pi
+import math
 
 def mc_q_to_m1_m2(mc, q):
     """This function does the mapping (mc,q) --> (m1,m2)
@@ -279,7 +278,12 @@ def hierarchical_spin(size, mag_gen, m1, m2, frac_hier):
     chi1[ind_hier] = np.random.normal(0.75, 0.025, len(ind_hier))
 
     return chi1, chi2
-
+def f_merg(m1,m2,xsi,zm) :
+	mtot = (m1+m2)*4.9685e-6*(1+zm)
+	eta = m1*m2/np.power(m1+m2,2.)
+	fmerg_mu0 = 1.-4.455*np.power(1-xsi,0.217)+3.521*np.power(1.-xsi,0.26)
+	fmerg_y = 0.6437*eta -0.05822*eta*eta -7.092*eta*eta*eta +0.827*eta*xsi -0.2706*eta*xsi*xsi -3.935*eta*eta*xsi
+	return (fmerg_mu0+fmerg_y)/(math.pi*mtot)
 
 def clean_path(path_dir):
     """This function ensure that a directory path (usually set in by user) finishes with "/"
@@ -300,7 +304,7 @@ def clean_path(path_dir):
     return path_dir
 
 
-def berti_pdet_fit(name_file="auxiliary_files/Pw_single.dat"):
+def berti_pdet_fit(name_file="AuxiliaryFiles/Pw_single.dat"):
     """This function returns a interp1d object computed from Emanuele Berti estimation of pdet.
 
     Parameters

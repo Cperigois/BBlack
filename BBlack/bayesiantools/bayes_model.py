@@ -1,6 +1,6 @@
-from GravitationalWave.detector import DetectorGW
+from BBlack.GWtools.detector import DetectorGW
 import concurrent.futures
-from GravitationalWave.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg
+from BBlack.astrotools.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg
 import astropy.cosmology as cosmo
 import pycbc.waveform
 from itertools import chain
@@ -8,76 +8,70 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import os
+import json
+import BBlack.astrotools.AstroModel as AM
 import BBlack.GWtools.detector as Detector
+import BBlack.GWtools.gw_event as GWE
+
+params = json.load(open('Run/Params.json', 'r'))
 
 
-params = json.load(open('Params.json',r))
-
-def process_bayes_model(astro_model, params)
-
+def process_bayes_model(astro_model, params):
     # Make sure directories are created
-    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/"):
-        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/")
-    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/Efficiency/"):
-        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/Efficiency")
-    if not os.path.exists("Run/"+params['name_of_project_folder']+"Bayes_Models/Match_model/"):
-        os.mkdir("Run/"+params['name_of_project_folder']+"Bayes_Models/Match_model")
+    if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Bayes_Models/"):
+        os.mkdir("Run/" + params['name_of_project_folder'] + "/Bayes_Models/")
+    if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Bayes_Models/Efficiency/"):
+        os.mkdir("Run/" + params['name_of_project_folder'] + "/Bayes_Models/Efficiency")
+    if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Bayes_Models/Match_model/"):
+        os.mkdir("Run/" + params['name_of_project_folder'] + "/Bayes_Models/Match_model")
 
-    bayes_model_processing_waveform_approximant = "IMRPhenomPv2"  # waveform approximant the fastest beeing "IMRPhenomD"
-    # but not accounting for precession
-    bayes_model_processing_bandwidth_KDE = 0.075  # KDE bandwidth to use
+    far_limit = params['event_selection']['far_limit']
+    snr_limit = params['event_selection']['snr_limit']
+    pastro_limit = params['event_selection']['pastro_limit']
+    approximant = params['bayes_model_params']["waveform_approximant"]  # waveform approximant
+    bw_method = params['bayes_model_params']["bandwidth_KDE"]  # KDE bandwidth to use
 
-    # -------------------------------------------      User input       ------------------------------------------------
-    for obs in params['observing_runs'].keys():
-        run_nfo = pd.read_csv('Auxiliary_files/observing_runs_info/'+obs+'events.csv')
-        observing_run_info = observing_run_info[observing_run_info.]
-        n_cpu = np.maximum([params['observing_runs'][obs]['size'], params['n_cpu_max'] ]) # number of CPUs
-        approximant = params['bayes_model_params']["waveform_approximant"]  # waveform approximant
-        bw_method = params['bayes_model_params']["bandwidth_KDE"]   # KDE bandwidth to use
-        detector_name = params['observing_runs'][obs]['detector'] # detector name
-        detector = Detector.DetectorGW(detector_name, params['observing_runs'][obs]['delta_freq'])
-        obs_run_name = obs  # observing run name
+    for obs in params['observing_runs']:
+        # Initialise observing run
+        # read and select events following user criteria
+        run_info = pd.read_csv('AuxiliaryFiles/observing_runs_info/' + obs + '_events.csv')
+        run_info = run_info[(run_info['far'] < far_limit) &
+                            (run_info['SNR'] > snr_limit) &
+                            (run_info['p_astro_' + params['co_type']] > pastro_limit)]
+        run_size = len(run_info.name)
+        run_info.to_csv("Run/" + params['name_of_project_folder'] + '/selection_from_' + obs + '.dat', sep='\t',
+                        index=None)
+        event_list = run_info.name
+        # extract other params set by the user
+        n_cpu = np.max([run_size, params['n_cpu_max']])  # number of CPUs
 
-    # -------------------------------------------      Main code       -------------------------------------------------
+        # Initialise detector
+        detector_name = params['event_selection']['runs_param'][obs]['detector']  # detector name
+        detector = Detector.DetectorGW(detector_name, params['event_selection']['runs_param'][obs]['delta_freq'])
+
+        for var in params['observable_variation'].keys():
+            # Initialise Bayesian model
+            bayes_model = BayesModel(astro_model=astro_model,
+                                     observing_run_name=obs,
+                                     event_list=event_list,
+                                     detector=detector,
+                                     variation=var)
+            bayes_model.compute_model_efficiency(astro_model.sample_file_name, n_cpu=n_cpu, approximant=approximant)
+
+            # Compute the matching term for all the events of the observing run
+            if n_cpu > run_size:
+                bayes_model.model_matching(n_cpu=run_size,
+                                           bw_method=bw_method)
+            else:
+                bayes_model.model_matching(n_cpu=n_cpu, bw_method=bw_method)
+            print('Done! ',params['name_of_project_folder'], ' ', obs, ' ', var)
 
 
-
-    # Get all the parameters set in astro_model_param.py
-    _, astro_param, co_param, mag_gen_param, name_spin_model = return_astro_param(sys.argv)
-
-    # Initialise spin and astro model
-    spin_model = SpinModel(name_model=name_spin_model, mag_gen_param=mag_gen_param)
-    astro_model = AstroModel(astro_model_parameters=astro_param, co_parameters=co_param, spin_model=spin_model,
-                             load_cat=True, load_mrd=True)
-
-    # Initialise observing run
-    observing_run = ObservingRun(obs_run_name, read_data_posterior=True, read_data_prior=True,
-                                 co_only=astro_model.astro_model_parameters["co_type"])
-
-    # Initialise detector
-    detector = DetectorGW(detector_name)
-
-    # Initialise Bayesian model
-    bayes_model = BayesModel(astro_model=astro_model, observing_run=observing_run, detector=detector)
-
-    # Compute detection efficiency using samples generated by generate_samples.py
-    sample_file_name = "sampling_" + "_".join([astro_model.map_name_par[x] + "_" +
-                                               str(astro_model.astro_model_parameters[x]) for x in
-                                               astro_model.astro_model_parameters]) + ".dat"
-    bayes_model.compute_model_efficiency("Samples/" + sample_file_name, n_cpu=n_cpu, approximant=approximant)
-
-    # Compute the matching term for all the events of the observing run
-    if n_cpu > observing_run.n_det[astro_model.astro_model_parameters["co_type"]]:
-        bayes_model.model_matching(n_cpu=observing_run.n_det[astro_model.astro_model_parameters["co_type"]],
-                                   bw_method=bw_method)
-    else:
-        bayes_model.model_matching(n_cpu=n_cpu, bw_method=bw_method)
-    print(obs_run_name, ' ', astro_model.astro_model_parameters["co_type"])
 
 class BayesModel:
 
-    def __init__(self, astro_model, observing_run, detector, read_match=False, read_eff=False,
-                 path_dir_int="Bayes_Models/Match_model/", path_dir_eff="Bayes_Models/Efficiency/"):
+    def __init__(self, astro_model, observing_run_name, event_list, detector, variation, read_match=False,
+                 read_eff=False):
         """Creates an instance of BayesModel using an astrophysical model, an observing run and a GW detector object.
 
         Parameters
@@ -99,49 +93,46 @@ class BayesModel:
         """
 
         # Check that the astro model is loaded with the good parameters
-        if isinstance(astro_model, AstroModel):
+        if isinstance(astro_model, AM.AstroModel):
             if not astro_model.loaded_flag["mrd"]:
-                raise ValueError("The merger rate density must be loaded for astro_model. Set load_mrd=True when "
-                                 "creating astro_model.")
-            self.astro_model = astro_model
-        else:
-            raise TypeError("\nError: astro_model is not of expected type.\n"
-                            "Please pass an instance of class AstroModel() in input.")
+                astro_model.read_merger_rate_file()
+        self.astro_model = astro_model
+        #        else:
+        #            raise TypeError("\nError: astro_model is not of expected type.\n"
+        #                            "Please pass an instance of class AstroModel() in input.")
+        self.observing_run_name = observing_run_name
+        self.run_params = params['event_selection']['runs_param'][observing_run_name]
+        self.event_list = event_list
+        self.variation = variation
 
-        # Check that the observing run is correctly defined
-        if isinstance(observing_run, ObservingRun):
-            self.observing_run = observing_run
-        else:
-            raise TypeError("\nError: observing_run is not of expected type.\n"
-                            "Please pass an instance of class ObservingRun() in input.")
-
-        # Check that the detector is correctly defined.
         if isinstance(detector, DetectorGW):
             self.detector = detector
         else:
             raise TypeError("\nError: detector is not of expected type.\n"
                             "Please pass an instance of class DetectorGW() in input.")
 
+        # Set directories
+        self.path_dir_int = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Match_model/"
+        self.path_dir_eff = "Run/" + params['name_of_project_folder'] + "/Bayes_Models/Efficiency/"
+        self.file_name_match = self.path_dir_int + self.astro_model.name + "_" + self.observing_run_name + "_" + self.variation + ".dat"
+        self.file_name_efficiency = self.path_dir_eff + self.astro_model.name + "_" + self.observing_run_name + "_" + self.variation + ".dat"
+
         # Number of sources in detector-frame (integrate merger rate in detector frame on the redshift range).
         # Careful, this assumes that the merger rate file only contains values for the range of redshift considered
         # in the Bayesian analysis.
-        self.n_sources = self.observing_run.t_obs * np.sum(self.astro_model.data_mrd['mr_df']) \
+        self.n_sources = self.run_params['duration'] * np.sum(self.astro_model.data_mrd['mr_df']) \
                          * round(self.astro_model.data_mrd['z'][1] - self.astro_model.data_mrd['z'][0], 5)
 
         # Get the values for model's match with events
         self.match_model = {}
-        #self.name_int = clean_path(path_dir_int) + "Int_" + self.astro_model.name_model.split(".dat")[0] \
-        #                + "_" + self.observing_run.name_obs_run + ".dat"
-        self.name_int = clean_path(path_dir_int) + self.astro_model.new_name.split(".dat")[
-            0] + "_" + self.observing_run.name_obs_run + "_nochip.dat"
+
         if read_match:
             self.read_match_model()
 
         # Get the values for model's efficiency
         self.efficiency = None
         self.n_det = None
-        self.name_eff = clean_path(path_dir_eff) + "Eff_" + self.astro_model.name_model.split(".dat")[0] \
-                        + "_" + self.observing_run.name_obs_run + ".dat"
+
         if read_eff:
             self.read_efficiency()
             self.n_det = self.n_sources * self.efficiency
@@ -151,26 +142,26 @@ class BayesModel:
         """
 
         # Check that the file exists at the path given
-        if not os.path.isfile(self.name_eff):
-            raise FileNotFoundError(f"The efficiency file was not found in {self.name_eff}")
+        if not os.path.isfile(self.file_name_efficiency):
+            raise FileNotFoundError(f"The efficiency file was not found in {self.file_name_efficiency}")
 
         # Read the efficiency from file (single value)
-        self.efficiency = np.loadtxt(self.name_eff)
+        self.efficiency = np.loadtxt(self.file_name_efficiency)
 
     def read_match_model(self):
         """Read the model matching for all the events of the observing run.
         """
 
         # Check that the file exists at the given path
-        if not os.path.isfile(self.name_int):
-            raise FileNotFoundError(f"The match model file was not found in {self.name_int}")
+        if not os.path.isfile(self.file_name_match):
+            raise FileNotFoundError(f"The match model file was not found in {self.file_name_match}")
 
         # Read the match values for each event
-        with open(self.name_int) as filein:
+        with open(self.file_name_match) as filein:
             for line in filein:
                 line.strip("\n")
                 (key, val) = line.split("\t")
-                if key in self.observing_run.gw_events_name[self.astro_model.astro_model_parameters["co_type"]]:
+                if key in self.event_list:
                     self.match_model[key] = float(val)
 
     def compute_snr(self, args):
@@ -192,30 +183,34 @@ class BayesModel:
 
         # Compute luminosity distance in Mpc
         if "ld" not in data_sample:
-            data_sample["ld"] = cosmo.Planck15.luminosity_distance(data_sample["z"]).value
+            data_sample["ld"] = cosmo.Planck15.luminosity_distance(data_sample["z"])
 
         # If (m1,m2) is not present, compute them from Mc and q
         if "m1" or "m2" not in data_sample:
             data_sample["m1"], data_sample["m2"] = mc_q_to_m1_m2(data_sample["Mc"], data_sample["q"])
 
-        # Set some detector parametesr
+        # Set some detector parameters
         delta_f = self.detector.delta_freq
         low_freq = self.detector.low_freq
         high_freq = self.detector.high_freq
 
         # Compute the optimal SNR
-
-        opt_snr = np.zeros(len(data_sample))+1.e-10
+        opt_snr = np.zeros(len(data_sample)) + 1.e-10
         # Check if the merger frequency occurs in the LVK band
-        fMerg = fmerg_f(data_sample['m1'], data_sample['m2'], 0, data_sample['z'])
-        subdata = data_sample[fMerg>low_freq]
-        opt_snr[fMerg > low_freq] = [pycbc.filter.matchedfilter.sigma(pycbc.waveform.get_fd_waveform(approximant=approximant,
-                                mass1=m1 * (1. + z), mass2=m2 * (1. + z), spin1x=0., spin1y=0., spin1z=0.,
-                                spin2x=0., spin2y=0., spin2z=0., delta_f=delta_f, f_lower=low_freq, distance=ld,
-                                inclination=0., f_ref=20.)[0], psd=self.detector.psd_data,
-                                low_frequency_cutoff=low_freq, high_frequency_cutoff=high_freq)
-                   for m1, m2, ld, z in zip(subdata["m1"], subdata["m2"], subdata["ld"], subdata["z"])]
-
+        f_merger = f_merg(data_sample['m1'], data_sample['m2'], 0, data_sample['z'])
+        subdata = data_sample[f_merger > low_freq]
+        opt_snr = [
+            pycbc.filter.matchedfilter.sigma(pycbc.waveform.get_fd_waveform(approximant=approximant,
+                                                                            mass1=m1 * (1. + z), mass2=m2 * (1. + z),
+                                                                            spin1x=0., spin1y=0., spin1z=0.,
+                                                                            spin2x=0., spin2y=0., spin2z=0.,
+                                                                            delta_f=delta_f, f_lower=low_freq,
+                                                                            distance=ld,
+                                                                            inclination=0., f_ref=20.)[0],
+                                             psd=self.detector.psd_data,
+                                             low_frequency_cutoff=low_freq, high_frequency_cutoff=high_freq)
+            for m1, m2, ld, z in zip(subdata["m1"], subdata["m2"], subdata["ld"], subdata["z"])]
+        print(opt_snr)
         return opt_snr
 
     def compute_model_efficiency(self, name_file_samples, n_cpu=4, rho_thr=8.0, approximant=None):
@@ -238,42 +233,44 @@ class BayesModel:
         mean_det_prob : float
             Model detection efficiency
         """
+        if not os.path.exists(self.file_name_efficiency):
+            # Set the waveform approximant
+            if approximant is not None:
+                if approximant not in pycbc.waveform.fd_approximants():
+                    raise ValueError(f"The approximant is not valid and must be taken "
+                                     f"from {pycbc.waveform.fd_approximants()}")
+            else:
+                approximant = "IMRPhenomPv2"
 
-        # Set the waveform approximant
-        if approximant is not None:
-            if approximant not in pycbc.waveform.fd_approximants():
-                raise ValueError(f"The approximant is not valid and must be taken "
-                                 f"from {pycbc.waveform.fd_approximants()}")
+            # Read the samples from the input file
+            df = pd.read_csv(
+                'Run/' + params['name_of_project_folder'] + '/Samples/' + self.astro_model.sample_file_name,
+                delimiter="\t")
+            length = len(df.z)
+
+            # Get the division limit for data
+            ranges = parallel_array_range(length, n_cpu)
+            args = ((df[r[0]:r[1]], approximant) for r in ranges)
+
+            # Compute in parallel the values of optimal SNR associated with the input samples
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                results = executor.map(self.compute_snr, args)
+
+            rho_opt = np.array([x for x in chain.from_iterable(results)])
+            w = rho_thr / rho_opt
+            w = [x if x < 1.0 else 1.0 for x in w]
+
+            # Implement the fit from Berti to pdet(w) and compute pdet
+            pdet = berti_pdet_fit()
+            kappas = pdet(w)
+            mean_det_prob = np.mean(kappas)
+            self.efficiency = mean_det_prob
+            # Write the value of the detection efficiency in a file
+            with open(self.file_name_efficiency, "w") as fileout:
+                fileout.write(str(mean_det_prob) + "\n")
         else:
-            approximant = "IMRPhenomPv2"
-
-        # Read the samples from the input file
-        df = pd.read_csv(name_file_samples, delimiter="\t")
-        length = len(df)
-
-        # Get the division limit for data
-        ranges = parallel_array_range(length, n_cpu)
-        args = ((df[r[0]:r[1]], approximant) for r in ranges)
-
-        # Compute in parallel the values of optimal SNR associated with the input samples
-        with concurrent.futures.ProcessPoolExecutor() as executor:
-            results = executor.map(self.compute_snr, args)
-
-        # Get the value of optimal SNR and the value of w
-        rho_opt = np.array([x for x in chain.from_iterable(results)])
-        w = rho_thr / rho_opt
-        w = [x if x < 1.0 else 1.0 for x in w]
-
-        # Implement the fit from Berti to pdet(w) and compute pdet
-        pdet = berti_pdet_fit()
-        kappas = pdet(w)
-        mean_det_prob = np.mean(kappas)
-
-        # Write the value of the detection efficiency in a file
-        with open(self.name_eff, "w") as fileout:
-            fileout.write(str(mean_det_prob) + "\n")
-
-        return mean_det_prob
+            self.read_efficiency()
+        return self.efficiency
 
     def model_matching_one_cpu(self, args):
         """This function is called by model_matching to run in parallel the model match computation
@@ -297,30 +294,30 @@ class BayesModel:
 
         # Generate model KDE
         kde_model = scipy.stats.gaussian_kde(
-            np.array([self.astro_model.data_cat[x] for x in self.astro_model.co_parameters]), bw_method=bw_method)
+            np.array([self.astro_model.data_cat[x] for x in params['observable_variation'][self.variation]['observables']]),
+            bw_method=bw_method)
 
         # Get the list of events associated with this CPU
-        list_events = self.observing_run.gw_events_name[self.astro_model.astro_model_parameters["co_type"]][ranges[0]:
-                                                                                                       ranges[1]]
+        list_events = self.event_list[ranges[0]:ranges[1]]
 
         # Loop over the list of events
         for event_name in list_events:
-
             # Get GW event posterior and prior data from LVK
-            event = self.observing_run.gw_events[self.astro_model.astro_model_parameters["co_type"]][event_name]
+            event = GWE.GwEvent(name=event_name)
             data_post = event.data_post
             data_prior = event.data_prior
 
             # Generate prior KDE
             kde_prior = scipy.stats.gaussian_kde(np.array([data_prior[x]
-                                                     for x in self.astro_model.co_parameters]), bw_method="scott")
+                                                           for x in params['observable_variation'][self.variation]['observables']]),
+                                                 bw_method="scott")
 
             # Compute the KDE for both the model and prior
-            values_kde_prior = kde_prior(np.array([data_post[x] for x in self.astro_model.co_parameters]))
-            values_kde_model = kde_model(np.array([data_post[x] for x in self.astro_model.co_parameters]))
+            values_kde_prior = kde_prior(np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
+            values_kde_model = kde_model(np.array([data_post[x] for x in params['observable_variation'][self.variation]['observables']]))
 
             # Compute the integral match value
-            int_event[event_name] = np.sum(values_kde_model/values_kde_prior) / len(data_post)
+            int_event[event_name] = np.sum(values_kde_model / values_kde_prior) / len(data_post)
 
         return int_event
 
@@ -347,7 +344,7 @@ class BayesModel:
                              "Impossible to run model_matching.")
 
         # Create the set of arguments to pass to each CPU
-        length = len(self.observing_run.gw_events[self.astro_model.astro_model_parameters["co_type"]])
+        length = len(self.event_list)
         ranges = parallel_array_range(length, n_cpu)
         args = ((r, bw_method) for r in ranges)
 
@@ -363,8 +360,8 @@ class BayesModel:
                 int_event.update(res)
 
         # Write the results in a file
-        with open(self.name_int, "w") as fileout:
+        with open(self.file_name_match, "w") as fileout:
             for k, v in int_event.items():
                 fileout.write(str(k) + "\t" + str(v) + "\n")
 
-        return self.name_int
+        return self.file_name_match

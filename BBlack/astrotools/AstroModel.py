@@ -17,10 +17,19 @@ import pickletools
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
-params = json.load(open('Run/Params.json','r'))
+params = json.load(open('Run/Params.json', 'r'))
+
+
+def initialization():
+    for model in params['astro_model_list'].keys():
+        astromodel = AstroModel(name=params['astro_model_list'][model]['name'],
+                                path_to_MRD=params['astro_model_list'][model]['path_to_MRD'],
+                                path_to_catalogs=params['astro_model_list'][model]['path_to_catalogs'])
+
+
 class AstroModel:
-    def __init__(self, name, path_to_catalogs = None, path_to_MRD = None,  observables = ['Mc','q','z'], spins='InCat',
-                 duration=1, catsize_opt="Fixed"):
+    def __init__(self, name, path_to_catalogs=None, path_to_MRD=None, observables=params['observables'],
+                 spins='InCat', duration=1, catsize_opt="Fixed"):
         """Create an instance of your model.
          Parameters
          ----------
@@ -46,36 +55,40 @@ class AstroModel:
 
         # Set class variables
         self.name = name
-        self.pkl_file = 'Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'
-        if not os.path.exists('Run/'+params['name_of_project_folder']+ '/' + self.name + '.pickle'):
+        self.sample_file_name = "sampling_" + self.name + ".dat"
+        self.pkl_file = 'Run/' + params['name_of_project_folder'] + '/' + self.name + '.pickle'
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '.pickle'):
             self.observables = observables
             self.spin_option = spins
             self.file_mrd = path_to_MRD
-            self.file_mrd_output = 'Run/'+params['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+name+'.dat'
+            self.file_mrd_output = 'Run/' + params[
+                'name_of_project_folder'] + '/Astro_Models/MergerRateDensity/Mrd_' + name + '.dat'
             self.path_to_catalogs = path_to_catalogs
             self.catsize_opt = catsize_opt
             self.duration = duration
             self.creation_flag = {"cat": False, "mrd": False}
             self.loaded_flag = {"cat": False, "mrd": False}
+            self.sample_file_name = "sampling_" + self.name + ".dat"
+            self.file_catalogs_output = ('Run/' + params['name_of_project_folder'] +
+                                         '/Astro_Models/Catalogs/_' + name + '.dat')
             self.process_astro_model()
             self.save()
         else:
             self.load()
-
-
+            self.read_catalog_file()
+            self.read_merger_rate_file()
 
     def process_astro_model(self):
         # -------------------------------------      Main code       ---------------------------------------------------
         # Make sure directories are created
-        if not os.path.exists('Run/'+params['name_of_project_folder']):
-            os.mkdir('Run/'+params['name_of_project_folder'])
-        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/"):
-            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/")
-        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/Catalogs/"):
-            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/Catalogs")
-        if not os.path.exists('Run/'+params['name_of_project_folder']+"/Astro_Models/MergerRateDensity/"):
-            os.mkdir('Run/'+params['name_of_project_folder']+"/Astro_Models/MergerRateDensity")
-
+        if not os.path.exists('Run/' + params['name_of_project_folder']):
+            os.mkdir('Run/' + params['name_of_project_folder'])
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Astro_Models/"):
+            os.mkdir('Run/' + params['name_of_project_folder'] + "/Astro_Models/")
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Astro_Models/Catalogs/"):
+            os.mkdir('Run/' + params['name_of_project_folder'] + "/Astro_Models/Catalogs")
+        if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Astro_Models/MergerRateDensity/"):
+            os.mkdir('Run/' + params['name_of_project_folder'] + "/Astro_Models/MergerRateDensity")
 
         # CosmoRate processing
         auxiliary_cosmorate.process_cosmorate(path_dir_cr=self.path_to_catalogs)
@@ -84,15 +97,13 @@ class AstroModel:
         self.create_merger_rate_file(range_z=params['redshift_range'], delimiter="\t")
 
         # Create the merger rate file
-        #model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
+        # model_astro.create_merger_rate_file(dir_cosmorate=dir_cosmo_rate, range_z=range_z)
         if self.catsize_opt == "Fixed":
             self.catsize = params['catalog_size']
         else:
             self.catsize = self.sources_in_tobs_time(self.duration)
         # Create the catalog
         self.create_catalog_file()
-
-
 
     def read_merger_rate_file(self, delimiter='\t'):
         """Read the merger rate file and stores data.
@@ -114,7 +125,7 @@ class AstroModel:
                                     "\t 2) If the merger rate file was created, check that the file "
                                     "is located at {}".format(self.file_mrd_output))
         # Read file
-        data_mrd = pd.read_csv(self.file_mrd_output, sep=delimiter, index_col = None)
+        data_mrd = pd.read_csv(self.file_mrd_output, sep=delimiter, index_col=None)
 
         # Update instance variables
         self.loaded_flag["mrd"] = True
@@ -153,7 +164,7 @@ class AstroModel:
 
         # Compute merger rate density and merger rate in detector-frame. Planck 15 cosmology is used here
         mrd_source_frame = data_original[:, 1]
-        mrd_detector_frame = np.array([mrd_s * (1.0/(1.0 + z)) for mrd_s, z in zip(mrd_source_frame, redshift)])
+        mrd_detector_frame = np.array([mrd_s * (1.0 / (1.0 + z)) for mrd_s, z in zip(mrd_source_frame, redshift)])
         dvc_dz = np.array([4. * np.pi * Planck15.differential_comoving_volume(z).to(u.Gpc ** 3 / u.sr).value
                            for z in redshift])
         mr_detector_frame = np.array([dvc * mr_df for dvc, mr_df in zip(dvc_dz, mrd_detector_frame)])
@@ -164,7 +175,7 @@ class AstroModel:
             for z, mrd_sf, mrd_df, mr_df in zip(redshift, mrd_source_frame, mrd_detector_frame, mr_detector_frame):
                 if z <= range_z:
                     fileout.write("{0:.4f} {4} {1:.4f} {4} {2:.4f} {4} {3:.4f} \n"
-                              "".format(z, mrd_sf, mrd_df, mr_df, delimiter))
+                                  "".format(z, mrd_sf, mrd_df, mr_df, delimiter))
                 else:
                     return
 
@@ -181,34 +192,34 @@ class AstroModel:
         """
 
         # Set path and namefiles
-        #if dir_cat is not None:
+        # if dir_cat is not None:
         #    path = clean_path(dir_cat)
-        #else:
+        # else:
         #    path = self.dir_cat
-        #file_cat = self.cat_file
+        # file_cat = self.cat_file
 
         # Check file existence
-        if not os.path.isfile(self.path_to_catalogs):
+        if not os.path.isfile(self.file_catalogs_output):
             raise FileNotFoundError("\nThe file for the model's catalog could not be found.\n"
                                     "\t 1) If the catalog was not created, run method "
                                     "create_catalog_file()\n"
                                     "\t 2) If the catalogfile was created, check that the file "
-                                    "is located at {}".format(self.path_to_catalogs))
+                                    "is located at {}".format(self.file_catalogs_output))
 
         # Read catalog
-        df = pd.read_csv(self.cat_file, delimiter=delimiter)
-        if any(x not in df.columns for x in self.obervables):
+        df = pd.read_csv(self.file_catalogs_output, delimiter=delimiter)
+        if any(x not in df.columns for x in self.observables):
             raise KeyError("One of the parameter you are trying to access is not present in the catalog. This results "
                            "from the fact that create_catalog_file was run with a different set of parameters.\n. "
-                           "Please re-run create_catalog_file() with the set {}".format(self.obervables))
-        data_cat = df[self.obervables]
+                           "Please re-run create_catalog_file() with the set {}".format(self.observables))
+        data_cat = df[self.observables]
 
         # Update instance variables
         self.loaded_flag["cat"] = True
-        #self.dir_cat = path
+        # self.dir_cat = path
         self.data_cat = data_cat
 
-    def create_catalog_file(self, delimiter="\t", input_catname_beg = 'all_vcm_',input_catname_end ='_50.dat'):
+    def create_catalog_file(self, delimiter="\t", input_catname_beg='all_vcm_', input_catname_end='_50.dat'):
         """Create the catalog file using the information from CosmoRate and previously created merger rate
         density file.
         In current version, CosmoRate files have the name "identifier_file + "_" + str(i) + "_50.dat" where i
@@ -229,19 +240,20 @@ class AstroModel:
         """
 
         # Set name of catalog fileparams['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
-        self.cat_file = params['name_of_project_folder']+'/Astro_Models/Catalogs/Catalog_'+self.name+'.dat'
+        self.file_catalogs_output = ('Run/' + params['name_of_project_folder'] +
+                                     '/Astro_Models/Catalogs/Catalog_' + self.name + '.dat')
         try:
-            assert not os.path.isfile(self.cat_file) or overwrite
+            assert not os.path.isfile(self.file_catalogs_output) or overwrite
         except AssertionError:
             print("Catalog '{}' already exists and hence was not created.\n"
                   "If you want to overwrite the catalog, run 'create_catalog_file' with argument 'overwrite' set "
-                  "to True".format(self.cat_file))
+                  "to True".format(self.file_catalogs_output))
             return
 
         # Check if CosmoRate files were processed before by looking at log-file
-        #dir_cosmorate = clean_path(dir_cosmorate)
-        #log_file = LogFileCR(dir_cosmorate)
-        #if not log_file.status["header_rewritten"]:
+        # dir_cosmorate = clean_path(dir_cosmorate)
+        # log_file = LogFileCR(dir_cosmorate)
+        # if not log_file.status["header_rewritten"]:
         #    raise ValueError("Ran CosmoRate pre-processing routines before creating catalog file.")
 
         # Read merger file if it was not done before
@@ -252,26 +264,24 @@ class AstroModel:
         # the redshift bin
         mr_df = self.data_mrd['mr_df']
 
-        cdf = np.append(0.0, np.cumsum(mr_df/mr_df.sum()))
-        print(cdf)
+        cdf = np.append(0.0, np.cumsum(mr_df / mr_df.sum()))
         counts, bin_edges = np.histogram(np.random.rand(self.catsize), bins=cdf)
-        print(enumerate(counts))
         # Initiate dataframe that will contains catalog values
         df_final = pd.DataFrame(columns=self.observables)
 
         # Get the names of catalog files from CosmoRate
         dir_catfile = self.path_to_catalogs + "catalogs/"
         n = os.listdir(dir_catfile)
-        regex = re.search('([A-Za-z0-9_]*_)\d+(_[A-Za-z0-9]*.dat)', n[0] )
+        regex = re.search('([A-Za-z0-9_]*_)\d+(_[A-Za-z0-9]*.dat)', n[0])
         print("*******  START : CATALOG CREATION  *******")
 
         # Loop over redshift bins
-        for i, c in enumerate(counts[:len(counts)-1]):
+        for i, c in enumerate(counts[:len(counts) - 1]):
 
             # Read CosmoRate catalog. So far the name of catalog files is  "identifier_file_i_50.dat"
             # If CosmoRate changes, updates this part too.
 
-            cat_source_name = dir_catfile + regex.group(1) + str(i+1) + regex.group(2)
+            cat_source_name = dir_catfile + regex.group(1) + str(i + 1) + regex.group(2)
             df = pd.read_csv(cat_source_name, delimiter="\t")
             df.rename(columns=params['AM_params']['input_parameters'], inplace=True)
 
@@ -282,37 +292,41 @@ class AstroModel:
             if "m1" in self.observables or "m2" in self.observables:
                 df["m1"], df["m2"] = UF.mc_q_to_m1_m2(df["Mc"], df["q"])
 
-            if "Mt" in self.observables and "Mt" not in df.columns :
-                df["Mt"] = df["m1"]+df["m2"]
+            if "Mt" in self.observables and "Mt" not in df.columns:
+                df["Mt"] = df["m1"] + df["m2"]
 
             if self.spin_option != 'InCat':
-                df['chi1'],df['costheta1'],df['chi2'],df['costheta2'] = self.generate_spins()
+                df['chi1'], df['costheta1'], df['chi2'], df['costheta2'] = self.generate_spins()
+
+            else:
+                if 'costheta1' not in df.columns:
+                    df['costheta1'] = np.cos(df['theta1'])
+                    df['costheta2'] = np.cos(df['theta2'])
 
             # Compute chi_effective
+
             if "chieff" in self.observables:
-                if not self.loaded_flag["spin_model"]:
-                    raise ValueError("No correct spin_model was loaded to compute spin-related quantities.")
-                df['chieff'] = (df['chi1']*df['costheta1']*df["m1"] + df['chi2'],df['costheta2']*df["m2"]) / (df["m1"]+df["m2"])
+                df['chieff'] = (df['chi1'] * df['costheta1'] * df["m1"] + df['chi2'] * df['costheta2'] * df["m2"]) / (
+                        df["m1"] + df["m2"])
 
             # Compute luminosity distance if not already in CosmoRate
-            #if "Dl" in self.observables and "Dl" not in df.columns:
+            # if "Dl" in self.observables and "Dl" not in df.columns:
             #    df["Dl"] = Cosmo.luminosity_distance(df["z"]).value
 
-            if "chip" in self.observables and "chip" not in df.columns :
-                df["chip"] = self.comp_chip(m1=df["m1"], m2=df["m2"], cos_theta1=df["costheta1"],
-                                                              cos_theta2=df['costheta2'], chi1=df['chi1'],
-                                                              chi2=df['chi2'])
+            if "chip" in self.observables and "chip" not in df.columns:
+                df["chip"] = self.comp_chip(m1=df["m1"], m2=df["m2"], cos_theta_1=df["costheta1"],
+                                            cos_theta_2=df['costheta2'], chi1=df['chi1'],
+                                            chi2=df['chi2'])
             #  Select only relevant parameters
             df = df[self.observables]
             # Concatenate dataframe with correct number of elements
-            for _ in range(int(c/len(df))):
+            for _ in range(int(c / len(df))):
                 df_final = pd.concat([df_final, df])
             ind_list = random.sample(range(len(df)), c % len(df))
             df_final = pd.concat([df_final, df.iloc[ind_list]])
-            print(f"Redshift bin {i+1}, current aggregated length dataframe {c}")
 
         # Write dataframe to file
-        df_final.to_csv('Run/'+self.cat_file, sep=delimiter, index=False, float_format="%.4f")
+        df_final.to_csv(self.file_catalogs_output, sep=delimiter, index=False, float_format="%.4f")
         print("*******  END : CATALOG CREATION  *******")
 
     def sample_catalog(self, n_walkers, n_chain, bw_method, n_cpu):
@@ -355,7 +369,7 @@ class AstroModel:
             samples_final = pd.DataFrame()
             for df in results:
                 if df is not None:
-                    samples_final = samples_final.append(df)
+                    samples_final = pd.concat([samples_final, df], ignore_index=True)
             samples_final = samples_final.reset_index(drop=True)
 
         else:  # Single CPU
@@ -382,12 +396,11 @@ class AstroModel:
         n_dim = len(self.observables)
         print(f"cpu {cpu}, args {args}")
 
-
         # Different seeds for each CPU
         np.random.seed()
 
         # Compute KDE
-        kde = scipy.stats.gaussian_kde(np.array([self.data_cat[x] for x in self.co_parameters]),
+        kde = scipy.stats.gaussian_kde(np.array([self.data_cat[x] for x in self.observables]),
                                        bw_method=bw_method)
 
         # No idea why, but log_prob does not work on scighera
@@ -412,7 +425,7 @@ class AstroModel:
         # Flatten and restrict chains in the min/max range
         min_np = np.array(self.data_cat.min())
         max_np = np.array(self.data_cat.max())
-        samples = flatten_restrict_range_output_emcee(sampler, self.observables, min_np, max_np)
+        samples = UF.flatten_restrict_range_output_emcee(sampler, self.observables, min_np, max_np)
         return samples
 
     def hist(self, var, ax=None, bins=50, logx=False, logy=False, range_x=None, range_y=None,
@@ -539,7 +552,7 @@ class AstroModel:
         """
 
         # Check that observation time is a float
-        #if type(tobs) != float:
+        # if type(tobs) != float:
         #    raise TypeError("Observation time tobs must be a float.")
         tobs = np.rint(tobs).astype(int)
         # Check that the merger rate density is loaded
@@ -548,15 +561,15 @@ class AstroModel:
 
         # Compute number of sources. Be careful, the range of redshift used will be the one in the merger rate density
         # file
-        #print(self.data_mrd['mr_df'], ' ',self.data_mrd['z'][1], ' ',  self.data_mrd['z'][0])
-        #n_sources = tobs * np.sum(self.data_mrd['mr_df']) * round(self.data_mrd['z'][1] - self.data_mrd['z'][0], 5)
+        # print(self.data_mrd['mr_df'], ' ',self.data_mrd['z'][1], ' ',  self.data_mrd['z'][0])
+        # n_sources = tobs * np.sum(self.data_mrd['mr_df']) * round(self.data_mrd['z'][1] - self.data_mrd['z'][0], 5)
         n_sources = tobs * np.sum(self.data_mrd['mr_df']) * round(0.1500 - 0.0500, 5)
 
-
         return n_sources
+
     def generate_spins(self):
 
-        if self.spin_option == 'Rand_Isotropic' :
+        if self.spin_option == 'Rand_Isotropic':
             sigmaSpin = 0.1
             v1_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
             v2_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
@@ -571,7 +584,7 @@ class AstroModel:
             costheta1 = np.ones(self.catsize)
             costheta2 = np.ones(self.catsize)
 
-        elif self.spin_option == 'Rand_Dynamics' :
+        elif self.spin_option == 'Rand_Dynamics':
             sigmaSpin = 0.1
             v1_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
             v2_L = np.random.normal(0.0, sigmaSpin, size=self.catsize)
@@ -591,8 +604,9 @@ class AstroModel:
             V2 = np.zeros(self.catsize)
             costheta1 = np.zeros(self.catsize)
             costheta2 = np.zeros(self.catsize)
-        else :
-            print('Choose a spin model (Rand_Isotropic or Rand_Dynamics) or specify InCat if your catalogue already contain the spins.')
+        else:
+            print(
+                'Choose a spin model (Rand_Isotropic or Rand_Dynamics) or specify InCat if your catalogue already contain the spins.')
         return V1, costheta1, V2, costheta2
 
     def comp_chieff(m1, m2, chi1, chi2, cos_theta_1, cos_theta_2):
@@ -623,7 +637,7 @@ class AstroModel:
 
         return chieff
 
-    def comp_chip(m1, m2, chi1, chi2, cos_theta_1, cos_theta_2):
+    def comp_chip(self, m1, m2, chi1, chi2, cos_theta_1, cos_theta_2):
         """This function computes the chi effective for source(s).
 
         Parameters
@@ -647,50 +661,49 @@ class AstroModel:
             Chi precessing
         """
 
-        chip1 = (2. + (3. * m2) / (2. * m1)) * chi1 * m1 * m1 * (1. - cos_theta_1 * cos_theta_1)**0.5
-        chip2 = (2. + (3. * m1) / (2. * m2)) * chi2 * m2 * m2 * (1. - cos_theta_2 * cos_theta_2)**0.5
+        chip1 = (2. + (3. * m2) / (2. * m1)) * chi1 * m1 * m1 * (1. - cos_theta_1 * cos_theta_1) ** 0.5
+        chip2 = (2. + (3. * m1) / (2. * m2)) * chi2 * m2 * m2 * (1. - cos_theta_2 * cos_theta_2) ** 0.5
         chipmax = np.maximum(chip1, chip2)
         chip = chipmax / ((2. + (3. * m2) / (2. * m1)) * m1 * m1)
         return chip
 
     def generate_samples(self):
-        # -------------------------------------------      User input       --------------------------------------------
 
-        num_samples = params['sampling_params']['size']  # 100 #10000  # number of samples wanted
-        n_cpu = params['n_cpu_max']  # number of CPUs
-        n_walkers = params['sampling_params']['number_of_walkers']  # number of MCMC walkers
-        n_chain = params['sampling_params']['chain_length']  # 50 #500  # length of MCMC chain
-        bw_method = params['sampling_params']['bandwidth_KDE']  # KDE bandwidth to use
-        # -------------------------------------------      Main code       ---------------------------------------------
+        if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Samples/" + self.sample_file_name):
+            num_samples = params['sampling_params']['size']  # 100 #10000  # number of samples wanted
+            n_cpu = params['n_cpu_max']  # number of CPUs
+            n_walkers = params['sampling_params']['number_of_walkers']  # number of MCMC walkers
+            n_chain = params['sampling_params']['chain_length']  # 50 #500  # length of MCMC chain
+            bw_method = params['sampling_params']['bandwidth_KDE']  # KDE bandwidth to use
 
-        # Generate num_samples from the astro_model using MCMC
-        samples_final = pd.DataFrame()
-        n = 0
-        while n < num_samples:
-            samples = astro_model.sample_catalog(n_walkers=n_walkers, n_chain=n_chain,
-                                                 bw_method=bw_method, n_cpu=n_cpu)
-            samples_final = samples_final.append(samples)
-            n = len(samples_final)
-            print(n)
+            # Generate num_samples from the astro_model using MCMC
+            samples_final = pd.DataFrame()
+            n = 0
+            while n < num_samples:
+                samples = self.sample_catalog(n_walkers=n_walkers, n_chain=n_chain,
+                                              bw_method=bw_method, n_cpu=n_cpu)
+                samples_final = pd.concat([samples_final, samples], ignore_index=True)
+                n = len(samples_final)
 
-        # Make sure directories for samples are created
-        if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Samples/"):
-            os.mkdir('Run/' + params['name_of_project_folder'] + "/Samples/")
+            # Make sure directories for samples are created
+            if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Samples/"):
+                os.mkdir('Run/' + params['name_of_project_folder'] + "/Samples/")
 
-        # Export the samples to a file
-        sample_file_name = "sampling_" + self.name + ".dat"
-        samples_final.to_csv("Samples/" + sample_file_name, sep="\t", index=False, float_format="%.4f")
+            # Export the samples to a file
+            samples_final.to_csv("Run/" + params['name_of_project_folder'] + "/Samples/" + self.sample_file_name,
+                                 sep="\t", index=False, float_format="%.4f")
+        self.save()
 
     def load(self):
         """try load self.name.txt"""
-        path = './Run/'+params['name_of_project_folder']+'/'
+        path = './Run/' + params['name_of_project_folder'] + '/'
         file = open(path + self.name + '.pickle', 'rb')
-        dataPickle = file.read()
+        data_pickle = file.read()
         file.close()
-        self.__dict__ = pickle.loads(dataPickle)
+        self.__dict__ = pickle.loads(data_pickle)
 
     def save(self):
-        path = './Run/'+params['name_of_project_folder']+'/'
+        path = './Run/' + params['name_of_project_folder'] + '/'
         file = open(path + self.name + '.pickle', 'wb')
         file.write(pickle.dumps(self.__dict__))
         file.close()
