@@ -175,13 +175,8 @@ class BayesModel:
             raise FileNotFoundError(f"The match model file was not found in {self.file_name_match}")
 
         # Read the match values for each event
-        self.match_model = pd.read_csv(self.file_name_match, index_col=None, sep = '\t', header = None)
-        #with open(self.file_name_match) as filein:
-        #    for line in filein:
-        #        line.strip("\n")
-        #        (key, val) = line.split("\t")
-        #        if key in self.event_list:
-        #            self.match_model[key] = float(val)
+        self.match_model = pd.read_csv(self.file_name_match, index_col=None, sep='\t', header=None)
+
 
     def compute_snr(self, args):
         """Compute the optimal SNR for an ensemble of binaries sampled from the catalog.

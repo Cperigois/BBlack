@@ -120,8 +120,8 @@ These parameters are used to select the confident events from LVK.
 The standard population paper uses pastro>0.9, FAR<0.25 and no constrain on the SNR (i.e. SNR>0)
 """
 
-pAstroLimit = 0.9  # use only GW events with a pastro > pAstroLimit
-farLimit = 0.25  # use only GW events with a far < farLimit
+pAstroLimit = 0  # use only GW events with a pastro > pAstroLimit
+farLimit = 100  # use only GW events with a far < farLimit
 snrLimit = 0  # use only GW events with a snr > snrLimit
 available_obs_runs = {"O1": {'detector': 'Livingston_O1', 'delta_freq': 1.0, 'duration': 0.1331},
                       # 48.6 days (arxiv 1606.04856, section 2, page 8)
