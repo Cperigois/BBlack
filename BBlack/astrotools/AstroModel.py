@@ -57,21 +57,24 @@ class AstroModel:
         self.name = name
         self.sample_file_name = "sampling_" + self.name + ".dat"
         self.pkl_file = 'Run/' + params['name_of_project_folder'] + '/' + self.name + '.pickle'
-        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_AM.pickle'):
+        if (not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_AM.pickle')) or (
+                params['overwrite']['astromodel'] == True):
             self.observables = observables
             self.spin_option = spins
-            self.file_mrd = path_to_MRD
+            self.file_mrd = params['astro_model_list'][name]['path_to_MRD']
             self.file_mrd_output = 'Run/' + params[
                 'name_of_project_folder'] + '/Astro_Models/MergerRateDensity/Mrd_' + name + '.dat'
-            self.path_to_catalogs = path_to_catalogs
+            self.path_to_catalogs = params['astro_model_list'][name]['path_to_catalogs']
+            self.file_catalogs_output = ('Run/' + params['name_of_project_folder'] +
+                                         '/Astro_Models/Catalogs/_' + name + '.dat')
             self.catsize_opt = catsize_opt
             self.duration = duration
             self.creation_flag = {"cat": False, "mrd": False}
             self.loaded_flag = {"cat": False, "mrd": False}
             self.sample_file_name = "sampling_" + self.name + ".dat"
-            self.file_catalogs_output = ('Run/' + params['name_of_project_folder'] +
-                                         '/Astro_Models/Catalogs/_' + name + '.dat')
             self.process_astro_model()
+            self.read_catalog_file()
+            self.read_merger_rate_file()
             self.save()
         else:
             self.load()
@@ -242,13 +245,6 @@ class AstroModel:
         # Set name of catalog fileparams['name_of_project_folder']+'/Astro_Models/MergerRateDensity/Mrd_'+self.name+'.dat'
         self.file_catalogs_output = ('Run/' + params['name_of_project_folder'] +
                                      '/Astro_Models/Catalogs/Catalog_' + self.name + '.dat')
-        try:
-            assert not os.path.isfile(self.file_catalogs_output) or overwrite
-        except AssertionError:
-            print("Catalog '{}' already exists and hence was not created.\n"
-                  "If you want to overwrite the catalog, run 'create_catalog_file' with argument 'overwrite' set "
-                  "to True".format(self.file_catalogs_output))
-            return
 
         # Check if CosmoRate files were processed before by looking at log-file
         # dir_cosmorate = clean_path(dir_cosmorate)
@@ -669,7 +665,8 @@ class AstroModel:
 
     def generate_samples(self):
 
-        if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Samples/" + self.sample_file_name):
+        if (not os.path.exists("Run/" + params['name_of_project_folder'] + "/Samples/" + self.sample_file_name) or
+                params['overwrite']['samples']):
             num_samples = params['sampling_params']['size']  # 100 #10000  # number of samples wanted
             n_cpu = params['n_cpu_max']  # number of CPUs
             n_walkers = params['sampling_params']['number_of_walkers']  # number of MCMC walkers

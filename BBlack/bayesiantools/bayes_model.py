@@ -18,7 +18,7 @@ import BBlack.GWtools.gw_event as GWE
 params = json.load(open('Run/Params.json', 'r'))
 
 
-def process_bayes_model(astro_model, params):
+def process_bayes_model(astro_model):
     # Make sure directories are created
     if not os.path.exists("Run/" + params['name_of_project_folder'] + "/Bayes_Models/"):
         os.mkdir("Run/" + params['name_of_project_folder'] + "/Bayes_Models/")
@@ -60,22 +60,30 @@ def process_bayes_model(astro_model, params):
                                      event_list=event_list,
                                      detector=detector,
                                      variation=var)
-            bayes_model.compute_model_efficiency(astro_model.sample_file_name, n_cpu=n_cpu, approximant=approximant)
+            file_exist = (os.path.isfile(bayes_model.file_name_match) &
+                          os.path.isfile(bayes_model.file_name_efficiency))
+            if (not file_exist) or params['overwrite']['bayesian_analysis']:
+                bayes_model.compute_model_efficiency(astro_model.sample_file_name, n_cpu=n_cpu, approximant=approximant)
 
-            # Compute the matching term for all the events of the observing run
-            if n_cpu > run_size:
-                bayes_model.model_matching(n_cpu=run_size,
-                                           bw_method=bw_method)
+                # Compute the matching term for all the events of the observing run
+                if n_cpu > run_size:
+                    bayes_model.model_matching(n_cpu=run_size,
+                                               bw_method=bw_method)
+                else:
+                    bayes_model.model_matching(n_cpu=n_cpu, bw_method=bw_method)
+                bayes_model.save()
+                print('Done! ', params['name_of_project_folder'], ' ', obs, ' ', var)
             else:
-                bayes_model.model_matching(n_cpu=n_cpu, bw_method=bw_method)
-            bayes_model.save()
-            print('Done! ', params['name_of_project_folder'], ' ', obs, ' ', var)
+                bayes_model.load()
+                print('Done! ', params['name_of_project_folder'], ' ', obs, ' ', var)
+                print('Files already exist and are not recomputed \nto recompute the bayesian analysis \nset the '
+                      'parameter rerun_bayesian_analysis to True')
 
 
 class BayesModel:
 
-    def __init__(self, name, astro_model, observing_run_name, event_list, detector, variation, read_match=False,
-                 read_eff=False):
+    def __init__(self, name, astro_model, observing_run_name, detector, variation, read_match=False,
+                 read_eff=False, event_list=None):
         """Creates an instance of BayesModel using an astrophysical model, an observing run and a GW detector object.
 
         Parameters
@@ -97,7 +105,8 @@ class BayesModel:
         """
         self.name = name
         # Check that the astro model is loaded with the good parameters
-        if not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_BM.pickle'):
+        if (not os.path.exists('Run/' + params['name_of_project_folder'] + '/' + self.name + '_BM.pickle')
+                or params['overwrite']['bayesian_analysis']):
             if isinstance(astro_model, AM.AstroModel):
                 if not astro_model.loaded_flag["mrd"]:
                     astro_model.read_merger_rate_file()
@@ -166,12 +175,13 @@ class BayesModel:
             raise FileNotFoundError(f"The match model file was not found in {self.file_name_match}")
 
         # Read the match values for each event
-        with open(self.file_name_match) as filein:
-            for line in filein:
-                line.strip("\n")
-                (key, val) = line.split("\t")
-                if key in self.event_list:
-                    self.match_model[key] = float(val)
+        self.match_model = pd.read_csv(self.file_name_match, index_col=None, sep = '\t', header = None)
+        #with open(self.file_name_match) as filein:
+        #    for line in filein:
+        #        line.strip("\n")
+        #        (key, val) = line.split("\t")
+        #        if key in self.event_list:
+        #            self.match_model[key] = float(val)
 
     def compute_snr(self, args):
         """Compute the optimal SNR for an ensemble of binaries sampled from the catalog.
@@ -219,7 +229,6 @@ class BayesModel:
                                              psd=self.detector.psd_data,
                                              low_frequency_cutoff=low_freq, high_frequency_cutoff=high_freq)
             for m1, m2, ld, z in zip(subdata["m1"], subdata["m2"], subdata["ld"], subdata["z"])]
-        print(opt_snr)
         return opt_snr
 
     def compute_model_efficiency(self, name_file_samples, n_cpu=4, rho_thr=8.0, approximant=None):

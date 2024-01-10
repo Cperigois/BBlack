@@ -1,6 +1,8 @@
+import time
 from BBlack.GWtools.detector import DetectorGW
 import concurrent.futures
-from BBlack.astrotools.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg
+from BBlack.astrotools.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg, \
+    jump_mix_frac
 import astropy.cosmology as cosmo
 import pycbc.waveform
 from itertools import chain
@@ -26,16 +28,19 @@ def compute_likelihood(astro_model):
         # Computation of likelihood
         subresults = {}
         log_likelihood = 0.0
+        print('***   ', astro_model.name, '   ***   ', var, '   ***')
         for obs in params['observing_runs']:
             det_name = params['event_selection']['runs_param'][obs]['detector']
             detector = Detector.DetectorGW(det_name, params['event_selection']['runs_param'][obs]['delta_freq'])
             bm_name = astro_model.name + '_' + obs + '_' + var
+            df = pd.read_csv('Run/' + params['name_of_project_folder'] + '/selection_from_' + obs + '.dat',
+                             index_col=None, sep='\t')
             bayes_model = BM.BayesModel(name=bm_name, astro_model=astro_model, observing_run_name=obs,
-                                        detector=detector,
+                                        detector=detector, event_list=df.name,
                                         variation=var, read_match=True, read_eff=True)
 
             # Get relevant terms for computation
-            integral_match_model = np.log(np.array(list(bayes_model.match_model.values()))).sum()
+            integral_match_model = np.log(bayes_model.match_model[1]).sum()
             detection_efficiency = bayes_model.efficiency
             n_sources = bayes_model.n_sources
             n_obs = len(bayes_model.event_list)
@@ -52,30 +57,34 @@ def compute_likelihood(astro_model):
     if not os.path.exists('Run/' + params['name_of_project_folder'] + "/Likelihoods/"):
         os.mkdir('Run/' + params['name_of_project_folder'] + "/Likelihoods/")
     json_object = json.dumps(results, indent=len(results.keys()))
-    with open('Run/' + params['name_of_project_folder'] + '/Likelihoods/' + astro_model.name + 'likelihoods.json',
+    with open('Run/' + params['name_of_project_folder'] + '/Likelihoods/' + astro_model.name + '_likelihoods.json',
               "w") as file:
         file.write(json_object)  # encode dict into JSON
     return results
 
 
 def multichannel_analysis(name):
+    if not os.path.exists('Run/' + params['name_of_project_folder']+'/Multichannel_analysis'):
+        os.mkdir('Run/' + params['name_of_project_folder']+'/Multichannel_analysis')
     channel_list = params['compute_multi_channel'][name]
     bayes_opt = params["bayes_model_params"]['multi_channel_option']
     n_mcmc = 100000  # total stops for the MCMC chain
     scale_jump = 0.01  # scale used for the gaussian jump
-    name_file_MCMC = "Multichannel_ana" + name + ".dat"
+    name_file = "Run/"+params['name_of_project_folder']+"/Multichannel_analysis/Multichannel_ana_" + name + ".dat"
     models_dict = {}
     observing_runs = {}
     observing_runs_list = params['observing_runs']
     for var in params['observable_variation']:
         for channel in range(len(channel_list)):
             for obs in range(len(observing_runs_list)):
-                astro_model = AM.AstroModel(name=channel)
-                det_name = params['event_selection']['runs_param'][obs]
-                detector = Detector.DetectorGW(det_name, params['event_selection']['runs_param'][obs]['delta_freq'])
-                bm_name = astro_model.name + '_' + obs + '_' + var
+                astro_model = AM.AstroModel(name=channel_list[channel])
+                det_name = params['event_selection']['runs_param'][observing_runs_list[obs]]['detector']
+                detector = Detector.DetectorGW(det_name,
+                                               params['event_selection']['runs_param'][observing_runs_list[obs]][
+                                                   'delta_freq'])
+                bm_name = astro_model.name + '_' + observing_runs_list[obs] + '_' + var
                 models_dict[(channel, obs)] = BM.BayesModel(name=bm_name, astro_model=astro_model,
-                                                            observing_run_name=obs,
+                                                            observing_run_name=observing_runs_list[obs],
                                                             detector=detector,
                                                             variation=var, read_match=True, read_eff=True)
         # Initialisation
@@ -91,21 +100,21 @@ def multichannel_analysis(name):
 
         # Compute log-likelihood
         log_likelihood_ini = 0.0
-        for obs in observing_runs_list:
-            df = pd.read_csv('Run/' + params['name_of_project_folder']+'selection_from_'+obs+'.dat',
-                             sep='\t', index_col=None)
+        for obs in range(len(observing_runs_list)):
+            df = pd.read_csv('Run/' + params['name_of_project_folder'] + '/selection_from_' + observing_runs_list[obs] +
+                             '.dat', sep='\t', index_col=None)
             events_list = df.name
             detection_efficiency = 0.0
             n_sources = 0.0
             n_obs = len(df.name)
             match_sources = []
-            for i, f in enumerate(channel_list):
-                detection_efficiency += mix_frac_ini[i] * models_dict[(f, obs)].efficiency
-                n_sources += mix_frac_ini[i] * models_dict[(f, obs)].n_sources
+            for i in range(len(channel_list)):
+                detection_efficiency += mix_frac_ini[i] * models_dict[(i, obs)].efficiency
+                n_sources += mix_frac_ini[i] * models_dict[(i, obs)].n_sources
                 if i == 0:
-                    match_sources = mix_frac_ini[i] * np.array(list(models_dict[(f, o)].match_model.values()))
+                    match_sources = mix_frac_ini[i] * models_dict[(i, obs)].match_model[1]
                 else:
-                    match_sources += mix_frac_ini[i] * np.array(list(models_dict[(f, o)].match_model.values()))
+                    match_sources += mix_frac_ini[i] * models_dict[(i, obs)].match_model[1]
             integral_match_model = np.log(match_sources).sum()
 
             log_likelihood_ini += compute_log_likelihood(bayes_opt, integral_match_model, n_obs, n_sources,
@@ -121,28 +130,28 @@ def multichannel_analysis(name):
 
         start = time.perf_counter()
         accept = 1
-        for n in range(N_mcmc - 1):
+        for n in range(n_mcmc - 1):
             if n % 25000 == 0:
-                print("Completion : " + str(100.0 * float(n) / float(N_mcmc)) + " %")
+                print("Completion : " + str(100.0 * float(n) / float(n_mcmc)) + " %")
 
             # Jump proposal for mixing fraction
             mix_frac_jump = jump_mix_frac(mix_frac_cur, scale_jump)
 
             # Compute log-likelihood
             log_likelihood_jump = 0.0
-            for o in observing_runs:
+            for obs in range(len(observing_runs)):
                 detection_efficiency = 0.0
                 n_sources = 0.0
-                n_obs = observing_runs[o].n_det[co_type]
+                n_obs = len(df.name)
 
                 match_sources = []
-                for i, f in enumerate(formation_channels):
-                    detection_efficiency += mix_frac_jump[i] * models_dict[(f, o)].efficiency
-                    n_sources += mix_frac_jump[i] * models_dict[(f, o)].n_sources
+                for i in range(len(channel_list)):
+                    detection_efficiency += mix_frac_jump[i] * models_dict[(i, obs)].efficiency
+                    n_sources += mix_frac_jump[i] * models_dict[(i, obs)].n_sources
                     if i == 0:
-                        match_sources = mix_frac_jump[i] * np.array(list(models_dict[(f, o)].match_model.values()))
+                        match_sources = mix_frac_jump[i] * models_dict[(i, obs)].match_model[1]
                     else:
-                        match_sources += mix_frac_jump[i] * np.array(list(models_dict[(f, o)].match_model.values()))
+                        match_sources += mix_frac_jump[i] * models_dict[(i, obs)].match_model[1]
                 integral_match_model = np.log(match_sources).sum()
 
                 log_likelihood_jump += compute_log_likelihood(bayes_opt, integral_match_model,
@@ -169,14 +178,14 @@ def multichannel_analysis(name):
         mcmc_chain = mcmc_chain[::200]
 
         # Create the file containing the output
-        print("Acceptance rate is : {} %".format(100.0 * float(accept) / float(N_mcmc)))
+        print("Acceptance rate is : {} %".format(100.0 * float(accept) / float(n_mcmc)))
         finish = time.perf_counter()
         print(f'Finished in {round(finish - start, 2)} second(s)')
 
-        header_file = "\t".join(["f_" + f for f in formation_channels]) + "\t" + "Likelihood" + "\n"
+        header_file = "\t".join(["f_" + f for f in channel_list]) + "\t" + "Likelihood" + "\n"
 
-        with open(namefile_MCMC, "w") as fileout:
-            fileout.write("\t".join(["f_" + f for f in formation_channels]) + "\t" + "Likelihood" + "\n")  # header
+        with open(name_file, "w") as fileout:
+            fileout.write("\t".join(["f_" + f for f in channel_list]) + "\t" + "Likelihood" + "\n")  # header
             np.savetxt(fileout, mcmc_chain, delimiter='\t', fmt='%.4f')
 
 
