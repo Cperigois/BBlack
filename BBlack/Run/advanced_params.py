@@ -120,8 +120,8 @@ These parameters are used to select the confident events from LVK.
 The standard population paper uses pastro>0.9, FAR<0.25 and no constrain on the SNR (i.e. SNR>0)
 """
 
-pAstroLimit = 0  # use only GW events with a pastro > pAstroLimit
-farLimit = 100  # use only GW events with a far < farLimit
+pAstroLimit = 0.90  # use only GW events with a pastro > pAstroLimit
+farLimit = 0.25  # use only GW events with a far < farLimit
 snrLimit = 0  # use only GW events with a snr > snrLimit
 available_obs_runs = {"O1": {'detector': 'Livingston_O1', 'delta_freq': 1.0, 'duration': 0.1331},
                       # 48.6 days (arxiv 1606.04856, section 2, page 8)
@@ -145,6 +145,16 @@ bayes_model_processing_bandwidth_KDE = 0.075  # KDE bandwidth to use
 bayes_option_compute_likelihood = "All"
 bayes_option_multichannel = "NoRate"
 
+"""             *** Plots parameters ***           """
+
+"""
+"""
+observable_range = {'Mc': {'min':0, 'max':150, 'n': 50},
+                    'q': {'min':0, 'max':1, 'n': 50},
+                    'z': {'min':0, 'max':15, 'n': 50},
+                    'chip': {'min':0, 'max':1, 'n': 50},
+                    'chieff': {'min':-0.75, 'max':0.75, 'n': 50},}
+
 """             *** Parameter output ***           """
 
 """
@@ -165,5 +175,6 @@ advParams = {"AM_params": {'input_parameters': input_parameters, 'spin_model': s
              "bayes_model_params": {'waveform_approximant': bayes_model_processing_waveform_approximant,
                                     'bandwidth_KDE': bayes_model_processing_bandwidth_KDE,
                                     'likelihood_option': bayes_option_compute_likelihood,
-                                    'multi_channel_option': bayes_option_multichannel}
+                                    'multi_channel_option': bayes_option_multichannel},
+             'post_processing_params': {'observable_range': observable_range}
              }

@@ -13,15 +13,10 @@ redshift_range = 15
 catalog_size = 200  # Minimum suggested 3000, 200 used for the example
 observables = ['Mc', 'q', 'z', 'chieff', 'chip']  # Choose among ['Mc', 'q', 'z', 'chip', 'chieff']
 n_cpu_max = 4  # Number maximal of cpu used by the code
-co_type = 'NSBH'  # To be chosen amon 'BBH', 'BNS', 'NSBH'
+co_type = 'BBH'  # To be chosen among 'BBH', 'BNS', 'NSBH'
 from_cosmorate = True  # If your files are standard output from cosmorate this parameter should be True, else, should be
 # ... False
-param_dictionary = {'name_of_project_folder': name_of_project_folder,
-                    'redshift_range': redshift_range,
-                    'catalog_size': catalog_size,
-                    'observables': observables
-                    }
-AP.set(name_of_project_folder, param_dictionary, AP.advParams)
+
 
 """               *** ASTROMODELS ***                 """
 """

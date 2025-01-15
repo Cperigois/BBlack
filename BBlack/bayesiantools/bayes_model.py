@@ -142,14 +142,14 @@ class BayesModel:
         else:
             self.load()
         # Get the values for model's match with events
-        self.match_model = {}
+        # self.match_model = {}
 
         if read_match:
             self.read_match_model()
 
         # Get the values for model's efficiency
-        self.efficiency = None
-        self.n_det = None
+        # self.efficiency = None
+        # self.n_det = None
 
         if read_eff:
             self.read_efficiency()
@@ -175,8 +175,7 @@ class BayesModel:
             raise FileNotFoundError(f"The match model file was not found in {self.file_name_match}")
 
         # Read the match values for each event
-        self.match_model = pd.read_csv(self.file_name_match, index_col=None, sep='\t', header=None)
-
+        self.match_model = pd.read_csv(self.file_name_match, sep='\t')
 
     def compute_snr(self, args):
         """Compute the optimal SNR for an ensemble of binaries sampled from the catalog.
@@ -375,11 +374,12 @@ class BayesModel:
             int_event = {}
             for res in results:
                 int_event.update(res)
-
         # Write the results in a file
-        with open(self.file_name_match, "w") as fileout:
-            for k, v in int_event.items():
-                fileout.write(str(k) + "\t" + str(v) + "\n")
+        df = pd.DataFrame.from_dict(int_event, orient='index', columns=['int'])
+        df.to_csv(self.file_name_match, index=True, sep='\t')
+        # with open(self.file_name_match, "w") as fileout:
+        #    for k, v in int_event.items():
+        #        fileout.write(str(k) + "\t" + str(v) + "\n")
 
         return self.file_name_match
 

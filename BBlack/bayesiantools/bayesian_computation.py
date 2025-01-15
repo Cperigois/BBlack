@@ -36,14 +36,15 @@ def compute_likelihood(astro_model):
             df = pd.read_csv('Run/' + params['name_of_project_folder'] + '/selection_from_' + obs + '.dat',
                              index_col=None, sep='\t')
             bayes_model = BM.BayesModel(name=bm_name, astro_model=astro_model, observing_run_name=obs,
-                                        detector=detector, event_list=df.name,
+                                        detector=detector,
                                         variation=var, read_match=True, read_eff=True)
 
             # Get relevant terms for computation
-            integral_match_model = np.log(bayes_model.match_model[1]).sum()
+            print(bayes_model.match_model.describe())
+            integral_match_model = np.log(bayes_model.match_model.int).sum()
             detection_efficiency = bayes_model.efficiency
             n_sources = bayes_model.n_sources
-            n_obs = len(bayes_model.event_list)
+            n_obs = len(bayes_model.match_model.index)
 
             # Compute log-likelihood
             log_likelihood_obs = compute_log_likelihood(bayes_opt, integral_match_model, n_obs,
@@ -112,9 +113,9 @@ def multichannel_analysis(name):
                 detection_efficiency += mix_frac_ini[i] * models_dict[(i, obs)].efficiency
                 n_sources += mix_frac_ini[i] * models_dict[(i, obs)].n_sources
                 if i == 0:
-                    match_sources = mix_frac_ini[i] * models_dict[(i, obs)].match_model[1]
+                    match_sources = mix_frac_ini[i] * models_dict[(i, obs)].match_model.int
                 else:
-                    match_sources += mix_frac_ini[i] * models_dict[(i, obs)].match_model[1]
+                    match_sources += mix_frac_ini[i] * models_dict[(i, obs)].match_model.int
             integral_match_model = np.log(match_sources).sum()
 
             log_likelihood_ini += compute_log_likelihood(bayes_opt, integral_match_model, n_obs, n_sources,
@@ -149,9 +150,9 @@ def multichannel_analysis(name):
                     detection_efficiency += mix_frac_jump[i] * models_dict[(i, obs)].efficiency
                     n_sources += mix_frac_jump[i] * models_dict[(i, obs)].n_sources
                     if i == 0:
-                        match_sources = mix_frac_jump[i] * models_dict[(i, obs)].match_model[1]
+                        match_sources = mix_frac_jump[i] * models_dict[(i, obs)].match_model.int
                     else:
-                        match_sources += mix_frac_jump[i] * models_dict[(i, obs)].match_model[1]
+                        match_sources += mix_frac_jump[i] * models_dict[(i, obs)].match_model.int
                 integral_match_model = np.log(match_sources).sum()
 
                 log_likelihood_jump += compute_log_likelihood(bayes_opt, integral_match_model,
