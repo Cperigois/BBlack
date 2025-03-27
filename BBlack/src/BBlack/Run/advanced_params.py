@@ -1,7 +1,3 @@
-import pandas
-import os
-import json
-
 ##################################################
 #                   COSMOLOGY Add this part to a notebook for an extraction to the Princess paper
 ##################################################
@@ -181,5 +177,5 @@ advParams = {"AM_params": {'input_parameters': input_parameters, 'spin_model': s
                                     'likelihood_option': bayes_option_compute_likelihood,
                                     'multi_channel_option': bayes_option_multichannel},
              'post_processing_params': {'observable_range': observable_range},
-             'Cosmo_model': AP.cosmo_model
+             'Cosmo_model': cosmo_model
              }

@@ -1,4 +1,4 @@
-from Princess.cosmology.cosmology import Cosmology
+from BBlack.cosmology.cosmology import Cosmology
 
 
 __all__ = ["Cosmology"]

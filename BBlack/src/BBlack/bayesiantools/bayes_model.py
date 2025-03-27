@@ -10,7 +10,7 @@ import json
 import importlib.resources
 from BBlack.astrotools.astromodel import AstroModel
 from BBlack.GWtools.gw_event import GwEvent
-from BBlack.astrotools.utils import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg
+from BBlack.bayesiantools.utils import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, f_merg
 from BBlack.GWtools.detector import DetectorGW
 from BBlack.cosmology.cosmology import Cosmology
 

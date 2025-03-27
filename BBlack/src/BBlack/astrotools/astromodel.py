@@ -10,9 +10,7 @@ import re
 import json
 import importlib.resources
 import pickle
-
-from BBlack.astrotools.utils import mc_q_to_m1_m2, m1_m2_to_mc_q
-from BBlack.bayesiantools.utils import flatten_restrict_range_output_emcee
+from BBlack.astrotools.utils import mc_q_to_m1_m2, m1_m2_to_mc_q, flatten_restrict_range_output_emcee
 from BBlack.cosmology import Cosmology
 from BBlack.astrotools.auxiliary_cosmorate import process_cosmorate
 

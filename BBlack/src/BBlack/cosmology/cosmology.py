@@ -5,9 +5,10 @@ import numpy as np
 import pandas as pd
 import json
 import importlib.resources
+from scipy.interpolate import InterpolatedUnivariateSpline
 
 # Import preset cosmologies
-with importlib.resources.open_text("Princess.cosmology", "presets.json") as f:
+with importlib.resources.open_text("BBlack.cosmology", "presets.json") as f:
     preset_cosmologies = json.load(f)
 
 class Cosmology :
@@ -40,6 +41,7 @@ class Cosmology :
 
         preset_cosmologies[self.name] = new_model
 
+        preset_file = "presets.json"
         with open(preset_file, 'w') as f:
             json.dump(preset_cosmologies, f, indent=4)
 

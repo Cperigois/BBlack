@@ -1,6 +1,6 @@
 import pycbc.psd
 import os
-from BBlack.astrotools.utils import clean_path
+from BBlack.GWtools.utils import clean_path
 from decimal import Decimal
 import json
 import importlib.resources

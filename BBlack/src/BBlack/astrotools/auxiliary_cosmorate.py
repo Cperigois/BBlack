@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import importlib.resources
 from BBlack.astrotools.utils import clean_path
 
 
@@ -9,7 +10,10 @@ from BBlack.astrotools.utils import clean_path
 # This expression is the one corresponding to catalogs' filenames
 #regex_catalog = r'^([A-Za-z0-9_]*)_\d+_(\d+).dat$'
 regex_catalog = r'^([A-Za-z0-9_]*)_\d+().dat$'
-params = json.load(open('Run/Params.json','r'))
+
+# Import parameter file
+with importlib.resources.open_text("BBlack.Run", "Params.json") as f:
+    params = json.load(f)
 
 def process_cosmorate(path_dir_cr, del_cosmorate="\t", del_cat="\t"):
     """Main function called to process CosmoRate files in order to make then in appropriate format for the
@@ -177,18 +181,6 @@ def rewrite_header_cosmorate(path_dir_cr, logfile, delimiter_cr="\t", delimiter_
 
 class LogFileCR:
     """Class that corresponds to a log-file associated with CosmoRate pre-processing.
-
-    Attributes
-    ----------
-    path_file : str
-        path towards the logfile
-    status : dict
-        dictionary containing status information on CosmoRate processing
-
-    Methods
-    ----------
-    update()
-        print the updated values for status in logfile
     """
 
     file_name = "log_file_cr.in"

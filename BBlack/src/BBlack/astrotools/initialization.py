@@ -1,8 +1,9 @@
-import emcee
 import json
+import importlib.resources
 
-param_path = 'Run/Params.json'
-params = json.load(open(param_path, 'r'))
+# Import parameter file
+with importlib.resources.open_text("BBlack.Run", "Params.json") as f:
+    params = json.load(f)
 
 
 def initialization():

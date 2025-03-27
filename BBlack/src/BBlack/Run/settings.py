@@ -1,7 +1,7 @@
 import os
 import json
-import BBlack.Run.advanced_params as AP
 import BBlack.Run.getting_started as GS
+import BBlack.Run.advanced_params as AP
 
 
 def Make_param_file():

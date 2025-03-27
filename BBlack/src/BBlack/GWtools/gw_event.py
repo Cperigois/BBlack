@@ -2,7 +2,7 @@ import datetime
 import os
 import re
 import pandas as pd
-from BBlack.bayesiantools.utils import check_inputlist_with_accessible_values, clean_path
+from BBlack.GWtools.utils import check_inputlist_with_accessible_values, clean_path
 
 
 class GwEvent:

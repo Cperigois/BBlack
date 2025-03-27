@@ -1,9 +1,8 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.stats import maxwell
-import pandas as pd
 import os
-from math import ceil, pow, pi
+from math import ceil
 import math
 
 def mc_q_to_m1_m2(mc, q):
@@ -536,3 +535,31 @@ def compute_autocorrelation_chain(mcmc_chain, num_var, len_chain):
         autocorr.append(val_autocorr / var_unscaled[i])
 
     return autocorr
+
+def flatten_restrict_range_output_emcee(sampler, list_name_param, min_range, max_range):
+    """Function that takes the outputs from a sampler, flattens it adn then only keep the points that are in the
+    range specified by min_range anx max_rage
+
+    Parameters
+    ----------
+    sampler : emcee Sampler
+        Emcee sampler that was already ran for some iterations
+    list_name_param : list of str
+        List of the parameters name ran for the MCMC
+    min_range : numpy array
+        List of minimum for each parameter, needs to be in same order than list_name_param
+    max_range : numpy array
+        List of maximum for each parameter, needs to be in same order than list_name_param
+
+    Returns
+    -------
+    samples : pandas dataframe
+        Normalised samples
+    """
+
+    samples = pd.DataFrame(sampler.get_chain(flat=True), columns=list_name_param)
+    for i, k in enumerate(list_name_param):
+        samples = samples[(samples[k] > min_range[i]) & (samples[k] < max_range[i])]
+
+    return samples
+

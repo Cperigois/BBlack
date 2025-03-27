@@ -1,8 +1,8 @@
 import json
-from astrotools.astromodel import AstroModel
-from bayesiantools.bayesian_computation import compute_likelihood, multichannel_analysis
-from bayesiantools.process_bayes_model import process_bayes_model
-from Run.settings import Make_param_file, clean
+from BBlack.astrotools.astromodel import AstroModel
+from BBlack.bayesiantools.bayesian_computation import compute_likelihood, multichannel_analysis
+from BBlack.bayesiantools.process_bayes_model import process_bayes_model
+from BBlack.Run.settings import Make_param_file, clean
 
 
 if __name__ == '__main__':
