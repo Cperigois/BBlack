@@ -1,7 +1,7 @@
 import os
 import re
 import json
-import BBlack.astrotools.utility_functions as UF
+from BBlack.astrotools.utils import clean_path
 
 
 #----------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ def process_cosmorate(path_dir_cr, del_cosmorate="\t", del_cat="\t"):
 
     # Check that the input directory exists
     print(path_dir_cr)
-    path_dir_cr = UF.clean_path(path_dir_cr)
+    path_dir_cr = clean_path(path_dir_cr)
     if not os.path.exists(path_dir_cr):
         raise FileNotFoundError(f"The directory {path_dir_cr} was not found !")
 

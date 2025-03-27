@@ -2,8 +2,7 @@ import datetime
 import os
 import re
 import pandas as pd
-
-from BBlack.astrotools.utility_functions import check_inputlist_with_accessible_values, clean_path
+from BBlack.bayesiantools.utils import check_inputlist_with_accessible_values, clean_path
 
 
 class GwEvent:
@@ -137,92 +136,4 @@ class GwEvent:
 
         return return_string
 
-    def hist(self, var, prior=False, ax=None, bins=50, logx=False, logy=False, range_x=None,
-             range_y=None, save=False, namefile=None, show=True):
-        """Histogram routine for the event parameter. Either do a 1d or 2d histograms depending on inputs.
-
-        Parameters
-        ----------
-        var : str or list of str
-            Name of variable(s)
-        prior : bool
-            If True, plot prior values instead of posterior data (default = False)
-        ax : matplotlib.axes.Axes object
-            If specified, use the axis to plot the figure (multiple plots). If None, create a new figure
-            (default = None)
-        bins : int
-            Number of bins to use for the plot (default = 50)
-        logx : bool
-            If True, set the x-axis logarithmic (default = False)
-        logy : bool
-            If True, set the y-axis logarithmic (default = False)
-        range_x : tuple
-            If specified, use this range for y-axis. (default = None)
-        range_y : tuple
-            If specified, use this range for y-axis in the 2d case. Need to also set range_x at the same time
-            (default = None)
-        save : bool
-            If True, save the figure  (default = False)
-        namefile: str
-            Name of the file to save if save was set to true (default = None)
-        show : bool
-            If true, disply the graph (default = True)
-        """
-
-        # Load posterior or prior data
-        if prior:
-            if not self.flags_loaded["prior"]:
-                raise ValueError("Prior data are not loaded.")
-            data = self.data_prior
-        else:
-            if not self.flags_loaded["post"]:
-                raise ValueError("Posterior data are not loaded.")
-            data = self.data_post
-
-        if type(var) == str or (type(var) == list and len(var) == 1):  # 1d histogram
-            title = None
-            gf.hist_1d(data, var, ax=ax, bins=bins, title=title, logx=logx, logy=logy, range_x=range_x, save=save,
-                       namefile=namefile, show=show)
-        elif type(var) == list and len(var) == 2:  # 2d histograms
-            title = None
-            gf.hist_2d(data, var[0], var[1], ax=ax, bins=bins, title=title, logx=logx, logy=logy, range_x=range_x,
-                       range_y=range_y, save=save, namefile=namefile, show=show)
-        else:
-            raise NotImplementedError("Option not implemented. Use corner() for such set of variables.")
-
-    def corner(self, var_select=None, prior=False, save=False, quantiles=None):
-        """Corner plot for selected parameters. It uses the package corner.py, with minimum functionnality as
-        some features seem to need some fixing.
-
-        Parameters
-        ----------
-        var_select : list of str
-            List of variables considered for the corner plot. If None, use loaded instance variables
-            (default = None)
-        prior : bool
-            If True, plot prior values instead of posterior data (default = False)
-        save : bool
-            If True, save the figure.
-        quantiles : list of float
-            List of quantiles that appear as lines in 1d-histograms of the corner plot.
-        """
-
-        # Load posterior or prior data
-        if prior:
-            if not self.flags_loaded["prior"]:
-                raise ValueError("Prior data are not loaded.")
-            data = self.data_prior
-        else:
-            if not self.flags_loaded["post"]:
-                raise ValueError("Posterior data are not loaded.")
-            data = self.data_post
-
-        # Select the appropriate variables
-        if var_select is not None:
-            check_inputlist_with_accessible_values(var_select, "var_select", self.event_par, "event_par")
-        else:
-            var_select = self.event_par
-
-        title = "CornerPlot_" + "".join(var_select) + "_" + self.name_event
-        gf.corner(data, title, var_select=var_select, save=save, quantiles=quantiles)
 

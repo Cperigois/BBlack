@@ -1,13 +1,15 @@
-import matplotlib.pyplot as plt
 import pycbc.psd
 import os
-import numpy as np
-from BBlack.astrotools.utility_functions import clean_path
+from BBlack.astrotools.utils import clean_path
 from decimal import Decimal
 import json
+import importlib.resources
 
 
-params = json.load(open('Run/Params.json','r'))
+# Import parameter file
+with importlib.resources.open_text("BBlack.Run", "Params.json") as f:
+    params = json.load(f)
+
 class DetectorGW:
 
     def __init__(self, name, delta_freq=None):
@@ -116,23 +118,6 @@ class DetectorGW:
 
         return psd_data
 
-    def plot_psd(self):
-        """This function displays the values of the psd.
-        """
-
-        # Create the array of frequency
-        frequency = np.arange(0.0, self.high_freq+self.delta_freq, self.delta_freq)
-
-        # Create the figure and the plot
-        plt.figure(figsize=(12, 8))
-        ax = plt.gca()
-        ax.set_yscale("log")
-        ax.plot(frequency, self.psd_data, lw=3)
-        ax.set_xlabel("Frequency")
-        ax.set_ylabel("PSD detector {}".format(self.name))
-
-        # Show the plot
-        plt.show()
 
     def load(self):
         """try load self.name.txt"""

@@ -2,21 +2,25 @@ import pandas
 import os
 import json
 
+##################################################
+#                   COSMOLOGY Add this part to a notebook for an extraction to the Princess paper
+##################################################
+""" 
+Cosmology. Here you can choose an existing Cosmology or create a customized one.
+Current cosmologies available are: {Planck15, Planck18}
+"""
 
-def set(_projectFolder, _paramDictionnary, _advParamDictionnary):
-    output = {**_paramDictionnary, **_advParamDictionnary}
-    json_object = json.dumps(output, indent=len(output.keys()))
-    with open('Run/Params.json', "w") as file:
-        file.write(json_object)  # encode dict into JSON
-    if not os.path.exists('Run/' + _projectFolder):
-        os.mkdir('Run/' + _projectFolder)
-    with open('Run/' + _projectFolder + '/Params.json', "w") as file:
-        file.write(json_object)  # encode dict into JSON
-    print("Done writing dict into Run/Params.json file and in Run/", str(_projectFolder), "/Params.json")
+# For a customized cosmology uncomment the following lines and add the reference paper,
+# and eventually the table and the model your data refers to. Save the model with reference information.
 
+# my_cosmo = Cosmology(name="MyModel", Omega_m=0.32, Omega_Lambda=0.68, H0=70)
+# my_cosmo.save(reference_paper="Planck Collaboration (2020)",
+#               model_values="TT,TE,EE+lowP",
+#               table_values="Table 4")
+# cosmo_model = my_cosmo.name
 
-def clean():
-    os.remove('Run/Params.json')
+# Otherwise, just choose among preset cosmologies
+cosmo_model = "Planck18"
 
 
 """             *** ASTROMODEL ***           """
@@ -130,7 +134,7 @@ available_obs_runs = {"O1": {'detector': 'Livingston_O1', 'delta_freq': 1.0, 'du
                       'O3a': {'detector': 'Livingston_O3a', 'delta_freq': 1.0, 'duration': 0.2230},
                       # 81.4  days (arxiv 2010.14527, section 2, page 10)
                       'O3b': {'detector': 'Livingston_O3b', 'delta_freq': 1.0,
-                              'duration': 0.2053}}  # 75.0 days (GWTC 3 paper)
+                              'duration': 0.2053}}  # 75.0 days (GWTC 3 paper)GW200115_042309, GW191219_163120,
 
 """             *** Bayes Model Processing ***           """
 
@@ -176,5 +180,6 @@ advParams = {"AM_params": {'input_parameters': input_parameters, 'spin_model': s
                                     'bandwidth_KDE': bayes_model_processing_bandwidth_KDE,
                                     'likelihood_option': bayes_option_compute_likelihood,
                                     'multi_channel_option': bayes_option_multichannel},
-             'post_processing_params': {'observable_range': observable_range}
+             'post_processing_params': {'observable_range': observable_range},
+             'Cosmo_model': AP.cosmo_model
              }

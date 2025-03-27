@@ -1,24 +1,21 @@
 import time
-from BBlack.GWtools.detector import DetectorGW
-import concurrent.futures
-from BBlack.astrotools.utility_functions import berti_pdet_fit, mc_q_to_m1_m2, parallel_array_range, clean_path, f_merg, \
-    jump_mix_frac
-import astropy.cosmology as cosmo
-import pycbc.waveform
-from itertools import chain
+from BBlack.astrotools.utils import jump_mix_frac
 import numpy as np
-import scipy.stats
 import pandas as pd
 import os
+import importlib.resources
 import json
-import BBlack.bayesiantools.bayes_model as BM
-import BBlack.astrotools.AstroModel as AM
-import BBlack.GWtools.detector as Detector
-import BBlack.GWtools.gw_event as GWE
+from BBlack.bayesiantools.bayes_model import BayesModel
+from BBlack.astrotools.astromodel import AstroModel
+from BBlack.GWtools.detector import DetectorGW
+
 
 os.environ['MKL_NUM_THREADS'] = '1'  # this command prevents Python from multithreading
 # (useful especially for Demoblack machine!)
-params = json.load(open('Run/Params.json', 'r'))
+
+# Import parameter file
+with importlib.resources.open_text("BBlack.Run", "Params.json") as f:
+    params = json.load(f)
 
 
 def compute_likelihood(astro_model):
@@ -31,11 +28,11 @@ def compute_likelihood(astro_model):
         print('***   ', astro_model.name, '   ***   ', var, '   ***')
         for obs in params['observing_runs']:
             det_name = params['event_selection']['runs_param'][obs]['detector']
-            detector = Detector.DetectorGW(det_name, params['event_selection']['runs_param'][obs]['delta_freq'])
+            detector = DetectorGW(det_name, params['event_selection']['runs_param'][obs]['delta_freq'])
             bm_name = astro_model.name + '_' + obs + '_' + var
             df = pd.read_csv('Run/' + params['name_of_project_folder'] + '/selection_from_' + obs + '.dat',
                              index_col=None, sep='\t')
-            bayes_model = BM.BayesModel(name=bm_name, astro_model=astro_model, observing_run_name=obs,
+            bayes_model = BayesModel(name=bm_name, astro_model=astro_model, observing_run_name=obs,
                                         detector=detector,
                                         variation=var, read_match=True, read_eff=True)
 
@@ -78,13 +75,13 @@ def multichannel_analysis(name):
     for var in params['observable_variation']:
         for channel in range(len(channel_list)):
             for obs in range(len(observing_runs_list)):
-                astro_model = AM.AstroModel(name=channel_list[channel])
+                astro_model = AstroModel(name=channel_list[channel])
                 det_name = params['event_selection']['runs_param'][observing_runs_list[obs]]['detector']
-                detector = Detector.DetectorGW(det_name,
+                detector = DetectorGW(det_name,
                                                params['event_selection']['runs_param'][observing_runs_list[obs]][
                                                    'delta_freq'])
                 bm_name = astro_model.name + '_' + observing_runs_list[obs] + '_' + var
-                models_dict[(channel, obs)] = BM.BayesModel(name=bm_name, astro_model=astro_model,
+                models_dict[(channel, obs)] = BayesModel(name=bm_name, astro_model=astro_model,
                                                             observing_run_name=observing_runs_list[obs],
                                                             detector=detector,
                                                             variation=var, read_match=True, read_eff=True)

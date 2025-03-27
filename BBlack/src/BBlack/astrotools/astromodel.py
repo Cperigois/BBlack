@@ -1,30 +1,25 @@
 import os
-import BBlack.astrotools.utility_functions as UF
 import os.path
 import pandas as pd
 import numpy as np
-from astropy.cosmology import Planck15
-import BBlack.astrotools.auxiliary_cosmorate as auxiliary_cosmorate
-import astropy.units as u
 import random
 import concurrent.futures
 import emcee
 import scipy.stats
 import re
 import json
+import importlib.resources
 import pickle
-import pickletools
-import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
 
-params = json.load(open('Run/Params.json', 'r'))
+from BBlack.astrotools.utils import mc_q_to_m1_m2, m1_m2_to_mc_q
+from BBlack.bayesiantools.utils import flatten_restrict_range_output_emcee
+from BBlack.cosmology import Cosmology
+from BBlack.astrotools.auxiliary_cosmorate import process_cosmorate
 
 
-def initialization():
-    for model in params['astro_model_list'].keys():
-        astromodel = AstroModel(name=params['astro_model_list'][model]['name'],
-                                path_to_MRD=params['astro_model_list'][model]['path_to_MRD'],
-                                path_to_catalogs=params['astro_model_list'][model]['path_to_catalogs'])
+# Import parameter file
+with importlib.resources.open_text("BBlack.Run", "Params.json") as f:
+    params = json.load(f)
 
 
 class AstroModel:
@@ -94,7 +89,7 @@ class AstroModel:
             os.mkdir('Run/' + params['name_of_project_folder'] + "/Astro_Models/MergerRateDensity")
 
         # CosmoRate processing
-        auxiliary_cosmorate.process_cosmorate(path_dir_cr=self.path_to_catalogs)
+        process_cosmorate(path_dir_cr=self.path_to_catalogs)
 
         # Create the merger rate file
         self.create_merger_rate_file(range_z=params['redshift_range'], delimiter="\t")
@@ -154,7 +149,9 @@ class AstroModel:
             raise FileNotFoundError("\nThe source file for the merger rate density of CosmoRate could not be found.\n"
                                     "Check that the file is in {} and that there is only one file containing the "
                                     "string 'MRD'".format(self.file_mrd))
-
+        # load user cosmology define in Run/advanced_params
+        cosmology = Cosmology.load(params['Cosmo_model'])
+        cosmology.info()
         # Read file
         data_original = np.loadtxt(self.file_mrd, skiprows=1)
 
@@ -168,8 +165,9 @@ class AstroModel:
         # Compute merger rate density and merger rate in detector-frame. Planck 15 cosmology is used here
         mrd_source_frame = data_original[:, 1]
         mrd_detector_frame = np.array([mrd_s * (1.0 / (1.0 + z)) for mrd_s, z in zip(mrd_source_frame, redshift)])
-        dvc_dz = np.array([4. * np.pi * Planck15.differential_comoving_volume(z).to(u.Gpc ** 3 / u.sr).value
-                           for z in redshift])
+        #dvc_dz = np.array([4. * np.pi * Planck15.differential_comoving_volume(z).to(u.Gpc ** 3 / u.sr).value
+        #                   for z in redshift])
+        dvc_dz = cosmology.comoving_volume(redshift) * 1e-9 #compute the comoving-volume in Gpc3 output of BBlack.cosmology is Mpc3
         mr_detector_frame = np.array([dvc * mr_df for dvc, mr_df in zip(dvc_dz, mrd_detector_frame)])
 
         # Create and write file.
@@ -283,10 +281,10 @@ class AstroModel:
 
             # Map to Mc, q if they are selected as parameters
             if "Mc" in self.observables or "q" in self.observables:
-                df["Mc"], df["q"] = UF.m1_m2_to_mc_q(df["m1"], df["m2"])
+                df["Mc"], df["q"] = m1_m2_to_mc_q(df["m1"], df["m2"])
 
             if "m1" in self.observables or "m2" in self.observables:
-                df["m1"], df["m2"] = UF.mc_q_to_m1_m2(df["Mc"], df["q"])
+                df["m1"], df["m2"] = mc_q_to_m1_m2(df["Mc"], df["q"])
 
             if "Mt" in self.observables and "Mt" not in df.columns:
                 df["Mt"] = df["m1"] + df["m2"]
@@ -421,117 +419,9 @@ class AstroModel:
         # Flatten and restrict chains in the min/max range
         min_np = np.array(self.data_cat.min())
         max_np = np.array(self.data_cat.max())
-        samples = UF.flatten_restrict_range_output_emcee(sampler, self.observables, min_np, max_np)
+        samples = flatten_restrict_range_output_emcee(sampler, self.observables, min_np, max_np)
         return samples
 
-    def hist(self, var, ax=None, bins=50, logx=False, logy=False, range_x=None, range_y=None,
-             save=False, namefile=None, show=True):
-        """Histogram routine for the event parameter. Either do a 1d or 2d histograms depending on inputs.
-
-        Parameters
-        ----------
-        var : str or list of str
-            Name of variable(s)
-        ax : matplotlib.axes.Axes object
-            If specified, use the axis to plot the figure (multiple plots). If None, create a new figure
-            (default = None)
-        bins : int
-            Number of bins to use for the plot (default = 50)
-        logx : bool
-            If True, set the x-axis logarithmic (default = False)
-        logy : bool
-            If True, set the y-axis logarithmic (default = False)
-        range_x : tuple
-            If specified, use this range for y-axis. (default = None)
-        range_y : tuple
-            If specified, use this range for y-axis in the 2d case. Need to also set range_x at the same time
-            (default = None)
-        save : bool
-            If True, save the figure  (default = False)
-        namefile: str
-            Name of the file to save if save was set to true (default = None)
-        show : bool
-            If true, disply the graph (default = True)
-        """
-
-        # Load posterior or prior data
-        if not self.loaded_flag["cat"]:
-            raise ValueError("Catalog data are not loaded")
-
-        if type(var) == str:  # 1d histogram
-            title = None
-            gf.hist_1d(self.data_cat, var, ax=ax, bins=bins, title=title, logx=logx, logy=logy,
-                       range_x=range_x, save=save, namefile=namefile, show=show)
-        elif type(var) == list and len(var) == 1:  # 1d histogram
-            title = None
-            gf.hist_1d(self.data_cat, var[0], ax=ax, bins=bins, title=title, logx=logx, logy=logy,
-                       range_x=range_x, save=save, namefile=namefile, show=show)
-        elif type(var) == list and len(var) == 2:  # 2d histograms
-            title = None
-            gf.hist_2d(self.data_cat, var[0], var[1], ax=ax, bins=bins, title=title, logx=logx, logy=logy,
-                       range_x=range_x, range_y=range_y, save=save, namefile=namefile, show=show)
-        else:
-            raise NotImplementedError("Option not implemented. Use corner() for such set of variables.")
-
-    def corner(self, var_select=None, save=False, quantiles=None):
-        """Corner plot for catalog variable. It uses the package corner.py, with minimum functionnality as
-        some features seem to need some fixing.
-
-        Parameters
-        ----------
-        var_select : list of str
-            List of variables considered for the corner plot. If None, use loaded instance variables
-            (default = None)
-        save : bool
-            If True, save the figure.
-        quantiles : list of float
-            List of quantiles that appear as lines in 1d-histograms of the corner plot.
-        """
-
-        if not self.loaded_flag["cat"]:
-            raise ValueError("Catalog data are not loaded.")
-        data = self.data_cat
-
-        # Select the appropriate variables
-        if var_select is not None:
-            check_inputlist_with_accessible_values(var_select, "var_select", self.co_parameters, "event_par")
-        else:
-            var_select = self.co_parameters
-
-        title = "CornerPlot_" + "".join(var_select) + "_" + self.name_model
-        gf.corner(data, title, var_select=var_select, save=save, quantiles=quantiles)
-
-    def check_sample_hist(self, name_file_samples, var, ax=None, range_x=None, logy=False):
-
-        # Check that catalog is indeed loaded
-        if not self.loaded_flag["cat"]:
-            raise ValueError("Catalog data are not loaded.")
-
-        # Read samples
-        if os.path.isfile(name_file_samples):
-            raise FileNotFoundError(f"File {name_file_samples} could not be found")
-        data_sample = pd.read_csv(name_file_samples, delimiter="\t")
-
-        # Set axis for the plot
-        if ax is None:
-            plt.figure(figsize=(12, 8))
-            ax = plt.gca()
-        else:
-            if not isinstance(ax, Axes):
-                raise TypeError("ax must be a Matplotlib Axes object.")
-
-        # Check variable is accessible in catalog and sample file
-        if var not in self.data_cat.columns:
-            raise KeyError(f"{var} not in catalog files.")
-        if var not in data_sample.columns:
-            raise KeyError(f"{var} not in samples.")
-
-        # Do the plot
-        self.hist(var=var, ax=ax, bins=50, range_x=range_x, show=False, logy=logy)
-        ax.hist(data_sample[var], density=True, lw=3, histtype="step", bins=50, range=range_x)
-
-        # Set the legend
-        ax.legend(["Model", "Sample"], fontsize=20)
 
     def sources_in_tobs_time(self, tobs):
         """This function computes the predicted number of observations for the model in a given observation time.

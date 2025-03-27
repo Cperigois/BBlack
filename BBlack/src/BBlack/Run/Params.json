@@ -1,0 +1,230 @@
+{
+    "name_of_project_folder": "Example",
+    "redshift_range": 15,
+    "catalog_size": 200,
+    "observables": [
+        "Mc",
+        "q",
+        "z",
+        "chieff",
+        "chip"
+    ],
+    "co_type": "BBH",
+    "astro_model_list": {
+        "Example1": {
+            "name": "Example1",
+            "path_to_catalogs": "./../BBHs_m01/",
+            "path_to_MRD": "./../BBHs_m01/MRD_spread_9Z_40_No_MandF2017_0.3_No_No_0.dat"
+        },
+        "Example2": {
+            "name": "Example2",
+            "path_to_catalogs": "./../BBHs_m02/",
+            "path_to_MRD": "./../BBHs_m02/MRD_spread_9Z_40_No_MandF2017_0.3_No_No_0.dat"
+        }
+    },
+    "observing_runs": [
+        "O1",
+        "O2",
+        "O3a",
+        "O3b"
+    ],
+    "compute_multi_channel": {
+        "1VS2": [
+            "Example1",
+            "Example2"
+        ]
+    },
+    "n_cpu_max": 4,
+    "observable_variation": {
+        "all": {
+            "observables": [
+                "Mc",
+                "q",
+                "z",
+                "chip",
+                "chieff"
+            ]
+        },
+        "no_spin": {
+            "observables": [
+                "Mc",
+                "q",
+                "z"
+            ]
+        }
+    },
+    "overwrite": {
+        "astromodel": false,
+        "samples": false,
+        "bayesian_analysis": false
+    },
+    "results": {
+        "cleaning": false,
+        "plots": false
+    },
+    "AM_params": {
+        "input_parameters": {
+            "m1": "m1",
+            "mrem1": "m1",
+            "Mass1": "m1",
+            "m2": "m2",
+            "mrem2": "m2",
+            "Mass2": "m2",
+            "chi1": "chi1",
+            "th1": "theta1",
+            "cos_nu1": "costheta1",
+            "cmu1": "costheta1",
+            "chi2": "chi2",
+            "th2": "theta2",
+            "cos_nu2": "costheta2",
+            "cmu2": "costheta2",
+            "z_merg": "z",
+            "z_form": "zForm",
+            "ID": "id",
+            "time_delay [yr]": "timeDelay",
+            "time_delay": "timeDelay",
+            "mZAMS1": "mzams1",
+            "mZAMS2": "mzams2",
+            "M_SC": "m_sc",
+            "Z progenitor": "z_progenitor",
+            "Channel": "Channel",
+            "Ng": "Ng",
+            "tSN1": "tsn1",
+            "tSN2": "tsn2"
+        },
+        "spin_model": "InCat"
+    },
+    "sampling_params": {
+        "size": 100,
+        "number_of_walkers": 16,
+        "chain_length": 500,
+        "bandwidth_KDE": 0.075
+    },
+    "detector_params": {
+        "detectors_avail": [
+            "Livingston_O1",
+            "Livingston_O2",
+            "Livingston_O3a",
+            "Livingston_O3b",
+            "Hanford_O1",
+            "Hanford_O2",
+            "Hanford_O3a",
+            "Virgo_O2",
+            "Virgo_O3a",
+            "LIGO_Design",
+            "ET_Design"
+        ],
+        "psd_attributes": {
+            "Livingston_O1": {
+                "psd_name": "Livingston_O1_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Livingston_O2": {
+                "psd_name": "Livingston_O2_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Livingston_O3a": {
+                "psd_name": "Livingston_O3a_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Livingston_O3b": {
+                "psd_name": "Livingston_O3b_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Hanford_O1": {
+                "psd_name": "Hanford_O1_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Hanford_O2": {
+                "psd_name": "Hanford_O2_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Hanford_O3a": {
+                "psd_name": "Hanford_O3a_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Virgo_O2": {
+                "psd_name": "Virgo_O2_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "Virgo_O3a": {
+                "psd_name": "Virgo_O3a_psd",
+                "in_pycbc": false,
+                "min_freq": 16.0,
+                "max_freq": 1023.75,
+                "delta_freq_min": 0.025
+            },
+            "LIGO_Design": {
+                "psd_name": "aLIGODesignSensitivityP1200087",
+                "in_pycbc": true,
+                "min_freq": 0.01,
+                "max_freq": 2048.0,
+                "delta_freq_min": 0.015
+            },
+            "ET_Design": {
+                "psd_name": "EinsteinTelescopeP1600143",
+                "in_pycbc": true,
+                "min_freq": 0.01,
+                "max_freq": 2048.0,
+                "delta_freq_min": 0.015
+            }
+        }
+    },
+    "event_selection": {
+        "pastro_limit": 0,
+        "far_limit": 100,
+        "snr_limit": 0,
+        "runs_param": {
+            "O1": {
+                "detector": "Livingston_O1",
+                "delta_freq": 1.0,
+                "duration": 0.1331
+            },
+            "O2": {
+                "detector": "Livingston_O2",
+                "delta_freq": 1.0,
+                "duration": 0.3231
+            },
+            "O3a": {
+                "detector": "Livingston_O3a",
+                "delta_freq": 1.0,
+                "duration": 0.223
+            },
+            "O3b": {
+                "detector": "Livingston_O3b",
+                "delta_freq": 1.0,
+                "duration": 0.2053
+            }
+        }
+    },
+    "bayes_model_params": {
+        "waveform_approximant": "IMRPhenomD",
+        "bandwidth_KDE": 0.075,
+        "likelihood_option": "All",
+        "multi_channel_option": "NoRate"
+    }
+}
