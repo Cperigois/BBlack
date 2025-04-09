@@ -8,7 +8,7 @@ import sys
 
 # Ajouter le chemin du projet au PATH
 sys.path.insert(0, os.path.abspath(".."))  # Remonte d'un niveau si conf.py est dans "docs/"
-sys.path.insert(0, os.path.abspath("../src/BBlack"))  # Ajoute le dossier Princess
+sys.path.insert(0, os.path.abspath("../src/BBlack"))  # Ajoute le dossier BBlack
 
 # Vérifie si le chemin est bien ajouté
 print("Sphinx is using sys.path:", sys.path)
@@ -19,7 +19,7 @@ print("Sphinx is using sys.path:", sys.path)
 project = 'BBlack'
 copyright = '2025, Carole Périgois'
 author = 'Carole Périgois'
-release = '0.0.0'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -58,10 +58,6 @@ napoleon_google_docstring = True  # Pour le style Google
 napoleon_include_init_with_doc = False
 napoleon_numpy_docstring = True
 
-rst_prolog = """
-.. role:: raw-html(raw)
-   :format: html
-"""
 
 import re
 

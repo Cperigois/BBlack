@@ -24,7 +24,6 @@ class BayesModel:
     def __init__(self, name, astro_model, observing_run_name, detector, variation, read_match=False,
                  read_eff=False, event_list=None):
         """Creates an instance of BayesModel using an astrophysical model, an observing run and a GW detector object.
-
         Parameters
         ----------
         astro_model : AstroModel object
@@ -118,7 +117,6 @@ class BayesModel:
 
     def compute_snr(self, args):
         """Compute the optimal SNR for an ensemble of binaries sampled from the catalog.
-
         Parameters
         ----------
         args : tuple
@@ -170,7 +168,6 @@ class BayesModel:
     def compute_model_efficiency(self, name_file_samples, n_cpu=4, rho_thr=8.0, approximant=None):
         """Function that computes the model efficiency. It requres to have pre-generated a set of samples that are
         reprsentative of the astrophysical model associated with the model.
-
         Parameters
         ----------
         name_file_samples : str
@@ -181,7 +178,6 @@ class BayesModel:
             Value of the SNR threshold to use to compute w
         approximant : str
             Name of the waveform approximant to use
-
         Returns
         -------
         mean_det_prob : float
@@ -228,12 +224,10 @@ class BayesModel:
 
     def model_matching_one_cpu(self, args):
         """This function is called by model_matching to run in parallel the model match computation
-
         Parameters
         ----------
         args : tuple
             Tuple of values containing the ranges (tuples) and bandwidth method to use for KDE
-
         Returns
         -------
         int_event : dict
@@ -282,14 +276,12 @@ class BayesModel:
     def model_matching(self, n_cpu, bw_method):
         """This function generates the value of the match of the model with all the events in the observing run
         associated in the BayesModel.
-
         Parameters
         ----------
         n_cpu : int
             Number of CPU to use in the analysis
         bw_method : float
             Value for the bandwidth of the KDE to use
-
         Returns
         -------
         int_event : dict

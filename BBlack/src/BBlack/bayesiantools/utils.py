@@ -4,7 +4,6 @@ import pandas as pd
 def flatten_restrict_range_output_emcee(sampler, list_name_param, min_range, max_range):
     """Function that takes the outputs from a sampler, flattens it adn then only keep the points that are in the
     range specified by min_range anx max_rage
-
     Parameters
     ----------
     sampler : emcee Sampler
@@ -15,7 +14,6 @@ def flatten_restrict_range_output_emcee(sampler, list_name_param, min_range, max
         List of minimum for each parameter, needs to be in same order than list_name_param
     max_range : numpy array
         List of maximum for each parameter, needs to be in same order than list_name_param
-
     Returns
     -------
     samples : pandas dataframe
@@ -30,12 +28,10 @@ def flatten_restrict_range_output_emcee(sampler, list_name_param, min_range, max
 
 def clean_path(path_dir):
     """This function ensure that a directory path (usually set in by user) finishes with "/"
-
     Parameters
     ----------
     path_dir : str
         Directory path
-
     Returns
     -------
     path_dir : str
@@ -50,7 +46,6 @@ def check_inputlist_with_accessible_values(list_to_check, name_list_to_check, li
                                                name_list_accessible):
     """This function is used to check if one list in input is indeed a list, and takes values from a list of
     accessible values given by another list.
-
     Parameters
     ----------
     list_to_check : list
@@ -74,12 +69,10 @@ def check_inputlist_with_accessible_values(list_to_check, name_list_to_check, li
 
 def berti_pdet_fit(name_file="AuxiliaryFiles/Pw_single.dat"):
     """This function returns a interp1d object computed from Emanuele Berti estimation of pdet.
-
     Parameters
     ----------
     name_file : str
         Path and name where to find the file with Emanuele Berti's data.
-
     Returns
     -------
     interpolate : interp1d object
@@ -105,14 +98,12 @@ def f_merg(m1,m2,xsi,zm) :
 
 def mc_q_to_m1_m2(mc, q):
     """This function does the mapping (mc,q) --> (m1,m2)
-
     Parameters
     ----------
     mc : float or numpy array
         Chirp mass of the sources(s)
     q : float or numpy array
         Mass ratio of the source(s)
-
     Returns
     -------
     m1 : float or numpy array
@@ -129,14 +120,12 @@ def mc_q_to_m1_m2(mc, q):
 def parallel_array_range(length, n_cpu):
     """Function that creates a list of tuple that contain the ranges that will be used to divide an iterable
     over various CPUs for parallelization.
-
     Parameters
     ----------
     length : int
         Length of the iterable that will be divided among the CPUs
     n_cpu : int
         number of CPUs for the simulation
-
     Returns
     -------
     ranges_parallel : list of tuples

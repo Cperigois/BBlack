@@ -23,6 +23,7 @@ initialization
     :members:
     :undoc-members:
 
+
 utils
 --------------------
 
@@ -34,12 +35,14 @@ utils
 Module bayesiantools
 ======================================
 
+
 class BayesModel
 --------------------
 
 .. automodule:: BBlack.bayesiantools.bayes_model
     :members:
     :undoc-members:
+
 
 bayesian_computation
 --------------------

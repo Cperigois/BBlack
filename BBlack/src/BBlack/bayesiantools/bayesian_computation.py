@@ -89,9 +89,6 @@ def multichannel_analysis(name):
         mcmc_chain = np.zeros(
             (n_mcmc, len(channel_list) + 1))  # initialise chain, last column contains log-likelihood
 
-        # -------------------------------------------      Main code       -------------------------------------------------
-
-        # -----------------     Starting MCMC point     -----------------
 
         # Generate a value of hyperparameter hyp randomly within the prior ranges
         mix_frac_ini = np.random.dirichlet(np.ones(len(channel_list)), 1)[0]
@@ -124,7 +121,7 @@ def multichannel_analysis(name):
         mix_frac_cur = mix_frac_ini
         log_likelihood_cur = log_likelihood_ini
 
-        # -----------------     Main chain     -----------------
+
 
         start = time.perf_counter()
         accept = 1
@@ -190,7 +187,6 @@ def multichannel_analysis(name):
 def compute_log_likelihood(bayes_opt, integral_match_model, n_obs, n_sources, detection_efficiency):
     """This function computes the log-likelihood according to the option selected for a number of observed
     that were observed during a given observing run
-
     Parameters
     ----------
     bayes_opt : str
@@ -203,7 +199,6 @@ def compute_log_likelihood(bayes_opt, integral_match_model, n_obs, n_sources, de
         Number of sources that is predicted by the model
     detection_efficiency : float
         Value of the detection efficiency
-
     Returns
     -------
     log_likelihood : float of tuples
